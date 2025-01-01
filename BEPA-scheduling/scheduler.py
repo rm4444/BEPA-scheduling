@@ -1,16 +1,10 @@
-from models import Doctor
-from utils import Gap, printCal
+from models import Doctor, Gap
+from utils import printCal
 
 import calendar
-import array
-import string
-import sys
-import xlrd
-import openpyxl
 import re
 import numpy as np
 from columnar import columnar
-import math
 import random
 import os
 
@@ -79,7 +73,7 @@ def schedule1Shift(docs,cal,index):
         schedDoc = P3[0]
 
     else: 
-        schedDoc = Doctor("--",[],[],[],[],[],[],0,0)
+        schedDoc = Doctor("--",[],[],0,0)
     """ print(str(date) + " shift 1: " + schedDoc.name)
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P1])
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P2])
@@ -128,7 +122,7 @@ def schedule2Shift(docs,cal,index):
         schedDoc = P3[0]
 
     else:
-        schedDoc = Doctor("--",[],[],[],[],[],[],0,0)
+        schedDoc = Doctor("--",[],[],0,0)
     """ print(str(date) + " shift 2: " + schedDoc.name)
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P1])
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P2])
@@ -181,7 +175,7 @@ def schedule3Shift(docs,cal,index):
         P3.sort(key = lambda x: x.shift_prefs[2], reverse = True)
         schedDoc = P3[0]
     else:
-        schedDoc = Doctor("--",[],[],[],[],[],[],0,0)
+        schedDoc = Doctor("--",[],[],0,0)
     """ print(str(date) + " shift 3: " + schedDoc.name)
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P1])
     print([doc.name + " " + str(doc.shifts) + " " + str(doc.min_shifts) + " " + str(doc.lastSixDays) + " " + str(doc.lastNineDays) for doc in P2])

@@ -3,22 +3,18 @@ from scheduler import *
 
 import pandas as pd
 import calendar
-import array
-import string
-import sys
 import xlrd
 import openpyxl
 import re
 import numpy as np
 from columnar import columnar
 import math
-import random
 import os
 
 def read_input(fname): #read Excel and create Doctor objects
     docs = []
     wb = xlrd.open_workbook(fname)
-    sheet = wb.sheet_by_name("Input")
+    sheet = wb.sheet_by_name("Shift Prefs")
     month = int(sheet.cell_value(1,1))
     year = int(sheet.cell_value(1,2))
     n = sheet.nrows
@@ -44,36 +40,8 @@ def read_input(fname): #read Excel and create Doctor objects
                 days_off = [day for day in range(1,num_days+1)]
             else:
                 days_off = []
-        if sheet.cell_value(i,7):
-            if isinstance(sheet.cell_value(i,7),float):
-                OneSO = [int(sheet.cell_value(i,7))]
-            else:
-                OneSO = list(map(int, re.split(r'\s|,\s',sheet.cell_value(i,7).strip())))
-        else:
-            OneSO = []
-        if sheet.cell_value(i,8):
-            if isinstance(sheet.cell_value(i,8),float):
-                TwoSO = [int(sheet.cell_value(i,8))]
-            else:
-                TwoSO = list(map(int, re.split(r'\s|,\s',sheet.cell_value(i,8).strip())))
-        else:
-            TwoSO = []
-        if sheet.cell_value(i,9):
-            if isinstance(sheet.cell_value(i,9),float):
-                ThreeSO = [int(sheet.cell_value(i,9))]
-            else:
-                ThreeSO = list(map(int, re.split(r'\s|,\s',sheet.cell_value(i,9).strip())))
-        else:
-            ThreeSO = []
-        if sheet.cell_value(i,10):
-            if isinstance(sheet.cell_value(i,10),float):
-                FourSO = [int(sheet.cell_value(i,10))]
-            else:
-                FourSO = list(map(int, re.split(r'\s|,\s',sheet.cell_value(i,10).strip())))
-        else:
-            FourSO = []
         shift_prefs = list(map(int, re.split(r'\s|,\s',sheet.cell_value(i,11).strip())))
-        doc = Doctor(name, days_off, OneSO, TwoSO, ThreeSO, FourSO, shift_prefs, min_shifts, max_shifts)
+        doc = Doctor(name, days_off, shift_prefs, min_shifts, max_shifts)
         docs.append(doc)
     cal1 = CalDay(-3)
     cal2 = CalDay(-2)
