@@ -6,7 +6,7 @@ from datetime import date
 def setup_test_environment():
     pat = Doctor(
         name="PAT",
-        days_off={date(2024, 1, 10), date(2024, 1, 15), date(2024, 1, 20)},
+        days_off={date(2024, 1, 10), date(2024, 1, 11), date(2024, 1, 12),date(2024, 1, 13), date(2024, 1, 14), date(2024, 1, 15)},
         shift_prefs=[1, 1, 1, 5],
         min_shifts=14,
         max_shifts=17,
