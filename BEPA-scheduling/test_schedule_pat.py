@@ -20,8 +20,8 @@ def run_test():
     doctors, calendar = setup_test_environment()
 
     # Print initialized calendar dates for debugging
-    for cal_day in calendar[:5]:  # Print the first 5 days for inspection
-        print(f"Initialized CalDay: {cal_day.date}")
+    #for cal_day in calendar[:5]:  # Print the first 5 days for inspection
+        #print(f"Initialized CalDay: {cal_day.date}")
 
     # Initialize scheduler
     scheduler = Scheduler(doctors, calendar)

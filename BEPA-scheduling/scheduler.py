@@ -55,10 +55,9 @@ class Scheduler:
                     else:
                         break
 
-        print(f"PAT finished the previous month with a cluster of {consecutive_days} consecutive days.")
-
-        print(f"Initial last shift date: {last_shift_date}\n")
-        print("Scheduling PAT...")
+        #print(f"PAT finished the previous month with a cluster of {consecutive_days} consecutive days.")
+        #print(f"Initial last shift date: {last_shift_date}\n")
+        #print("Scheduling PAT...")
 
         index = 0
         while index < len(self.calendar):
@@ -72,7 +71,7 @@ class Scheduler:
                     # Check if we can extend the cluster
                     if (cal_day.date - last_shift_date).days == 1 and cal_day.date not in pat.days_off and not cal_day.is_shift_filled("s4"):
                         if consecutive_days >= 4:
-                            print("Cluster has reached the maximum size of 4 days. Stopping extension.\n")
+                            #print("Cluster has reached the maximum size of 4 days. Stopping extension.\n")
                             break
 
                         if cal_day.assign_shift("s4", pat):
@@ -82,7 +81,7 @@ class Scheduler:
                             consecutive_days += 1
                             print(f"Day {cal_day.date}: Shift 4 assigned to PAT (extending previous cluster).")
                     else:
-                        print("Cluster extension complete. Transitioning to new scheduling.\n")
+                        #print("Cluster extension complete. Transitioning to new scheduling.\n")
                         break
 
                     index += 1
@@ -93,15 +92,15 @@ class Scheduler:
 
             # Skip if PAT cannot work this day
             if cal_day.date in pat.days_off:
-                print(f"Skipping {cal_day.date}: PAT has the day off.")
+                #print(f"Skipping {cal_day.date}: PAT has the day off.")
                 index += 1
                 continue
             if cal_day.is_shift_filled("s4"):
-                print(f"Skipping {cal_day.date}: Shift 4 is already filled.")
+                #print(f"Skipping {cal_day.date}: Shift 4 is already filled.")
                 index += 1
                 continue
             if last_shift_date and (cal_day.date - last_shift_date).days < 4:
-                print(f"Skipping {cal_day.date}: Not enough gap since last shift on {last_shift_date}.")
+                #print(f"Skipping {cal_day.date}: Not enough gap since last shift on {last_shift_date}.")
                 index += 1
                 continue
 
@@ -113,9 +112,10 @@ class Scheduler:
             if cluster_size and cluster_size < 3:
                 if index + cluster_size >= len(self.calendar):
                     # Allow smaller cluster at the end of the month
-                    print(f"Allowing smaller cluster of {cluster_size} days at the end of the month.")
+                    #print(f"Allowing smaller cluster of {cluster_size} days at the end of the month.")
+                    pass
                 else:
-                    print(f"Skipping {cal_day.date}: Cluster size {cluster_size} is too small.")
+                    #print(f"Skipping {cal_day.date}: Cluster size {cluster_size} is too small.")
                     index += 1
                     continue
 
