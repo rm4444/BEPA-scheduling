@@ -34,20 +34,28 @@ class Scheduler:
         pat = next(doc for doc in self.doctors if doc.name == "PAT")
         days_scheduled = 0
         last_shift_date = None
+        consecutive_days = 0
 
-        # Determine if PAT has a cluster at the end of the previous month
+        # If PAT has shifts at the end of the previous month, set consecutive days properly
         if pat.previous_month_shifts:
             last_shift_date = pat.previous_month_shifts[-1][0]
-            consecutive_days = 1
+            previous_month = last_shift_date.month
+            previous_year = last_shift_date.year
+            if previous_month == 12:  # Handle December to January transition
+                last_day_previous_month = date(previous_year + 1, 1, 1) - timedelta(days=1)
+            else:
+                last_day_previous_month = date(previous_year, previous_month + 1, 1) - timedelta(days=1)
 
             # Check if the last few days of the previous month form a cluster
-            for i in range(len(pat.previous_month_shifts) - 2, -1, -1):
-                if (pat.previous_month_shifts[i][0] - pat.previous_month_shifts[i + 1][0]).days == -1:
-                    consecutive_days += 1
-                else:
-                    break
+            if last_day_previous_month == last_shift_date:
+                consecutive_days = 1
+                for i in range(len(pat.previous_month_shifts) - 2, -1, -1):
+                    if (pat.previous_month_shifts[i][0] - pat.previous_month_shifts[i + 1][0]).days == -1:
+                        consecutive_days += 1
+                    else:
+                        break
 
-            print(f"PAT finished the previous month with a cluster of {consecutive_days} consecutive days.")
+        print(f"PAT finished the previous month with a cluster of {consecutive_days} consecutive days.")
 
         print(f"Initial last shift date: {last_shift_date}\n")
         print("Scheduling PAT...")

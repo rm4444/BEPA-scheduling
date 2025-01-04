@@ -10,7 +10,7 @@ def setup_test_environment():
         shift_prefs=[1, 1, 1, 5],
         min_shifts=14,
         max_shifts=17,
-        previous_month_shifts=[(date(2023, 12, 29), 4),(date(2023, 12, 30), 4)]
+        previous_month_shifts=[(date(2023, 12, 28), 4),(date(2023, 12, 29), 4),(date(2023, 12, 30), 4),(date(2023, 12, 31), 4)]
     )
     calendar = [CalDay(date(2024, 1, day)) for day in range(1, 32)]
     return [pat], calendar
