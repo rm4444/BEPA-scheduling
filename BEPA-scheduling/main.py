@@ -1,6 +1,6 @@
-from utils import read_input, buildCal, exportCal, printCal
-from scheduler import schedule1Shift, schedule4Shifts, check4Shifts
-from models import Doctor, CalDay
+from utils import *
+from scheduler import *
+from models import *
 import sys
 import os
 import calendar

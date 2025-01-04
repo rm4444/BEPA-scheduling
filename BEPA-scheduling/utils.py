@@ -1,5 +1,5 @@
-from models import Doctor, CalDay
-from scheduler import *
+from models import *
+from scheduler import last3days, schedule1Shift, schedule2Shift, schedule3Shift, schedule4Shifts
 
 import pandas as pd
 import calendar
@@ -167,8 +167,6 @@ def buildCal(docs, cal, num_days, year, month, fname):
     for i in range(num_days):
         date = i + 1
         index = i + 3
-        calcLastSix(docs,cal,index)
-        calcLastNine(docs,cal,index)
         schedule1Shift(docs,cal,index)
         schedule2Shift(docs,cal,index)
         schedule3Shift(docs,cal,index)
