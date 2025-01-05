@@ -34,9 +34,9 @@ def main():
             weekendTracker -= 7
         if weekendTracker == 5 or weekendTracker == 6:
             schedule[i+3].weekend = True
-    buildCal(docs, schedule, num_days, year, month, fname)
+    #buildCal(docs, schedule, num_days, year, month, fname)
     #printCal(docs,schedule,year,month)
-    exportCal(fname,schedule,year,month)
+    #exportCal(fname,schedule,year,month)
     os.system('cls||clear')
     print()
     print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")

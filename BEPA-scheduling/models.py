@@ -121,10 +121,10 @@ class CalDay:
         return f"<CalendarDay {self.date} - Assignments: {assigned}>"
 
 
-class Gap:
-    def __init__(self,start_date,length):
-        self.start_date = start_date
-        self.length = length
-        self.remaining = length
-        self.filled = False
-        self.docs = []
+# class Gap:
+#     def __init__(self,start_date,length):
+#         self.start_date = start_date
+#         self.length = length
+#         self.remaining = length
+#         self.filled = False
+#         self.docs = []
