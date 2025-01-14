@@ -49,10 +49,12 @@ class Gap:
 def read_input(fname): #read Excel and create Doctor objects
     docs = []
     wb = xlrd.open_workbook(fname)
-    sheet = wb.sheet_by_name("Input")
+    sheet = wb.sheet_by_name("Shift Prefs")
     month = int(sheet.cell_value(1,1))
     year = int(sheet.cell_value(1,2))
-    n = sheet.nrows
+    name_column_index = 4
+    non_empty_rows = sum(1 for i in range(sheet.nrows) if sheet.cell_value(i, name_column_index).strip() != "")
+    n = non_empty_rows
     num_days = calendar.monthrange(year,month)[1]
     for i in range(2, n):
         name = sheet.cell_value(i,4).strip().upper()
@@ -425,10 +427,10 @@ def schedule3Shift(docs,cal,index):
         
 
 def schedule4Shifts(docs,cal,num_days):
-    P1 = [doc for doc in docs if doc.shift_prefs[3] == 9]
-    P2 = [doc for doc in docs if doc.shift_prefs[3] == 8]
-    P3 = [doc for doc in docs if doc.shift_prefs[3] == 7]
-    P4 = [doc for doc in docs if doc.shift_prefs[3] <= 6]
+    P1 = [doc for doc in docs if doc.shift_prefs[3] == 5]
+    P2 = [doc for doc in docs if doc.shift_prefs[3] == 4]
+    P3 = [doc for doc in docs if doc.shift_prefs[3] == 3]
+    P4 = [doc for doc in docs if doc.shift_prefs[3] <= 2]
     
     #schedule first few shifts of month based on who worked the end of last month
     date = 1
@@ -453,9 +455,9 @@ def schedule4Shifts(docs,cal,num_days):
     elif cal[2].s4 in P2:
         max_night_shifts = min(3,minGap)
     elif cal[2].s4 in P3:
-        max_night_shifts = 2
+        max_night_shifts = 3
     else:
-        max_night_shifts = 1
+        max_night_shifts = 3
     if cal[2].s4 != P1[0]:
         schedDoc = cal[2].s4
         #print(schedDoc.name + " " + str(schedDoc.consec_shifts) + " " + str(schedDoc.four_shifts))
@@ -513,7 +515,7 @@ def schedule4Shifts(docs,cal,num_days):
                                 schedDoc.weekends += 1
                         minGap = 3
                         rand = random.randint(0,1)
-                        if i+4 not in schedDoc.days_off and i+4 not in schedDoc.FourSO and i+3 != num_days and rand == 1:
+                        if i+4 not in schedDoc.days_off and i+4 not in schedDoc.FourSO and i+3 != num_days:
                             if index+3 <= len(cal)-1:
                                 cal[index+3].s4 = schedDoc
                                 schedDoc.four_shifts += 1
@@ -650,7 +652,7 @@ def schedule4Gaps(cal,gap,gapDocs,gapDates,min_shifts,lastDocsOG):
                             doc.weekends += 1
                     gap.docs.append(doc)
                     #schedule additional shift
-                    if gap.remaining > 0 and min_shifts != 3 and cal[min(index + min_shifts,len(cal)-1)].s4.name == "--" and not (min_shifts == 2 and (doc.name == "ROD" or doc.name == "TOM")):
+                    if gap.remaining > 0 and min_shifts != 3 and cal[min(index + min_shifts,len(cal)-1)].s4.name == "--" and not (min_shifts == 2):
                         if date + min_shifts not in doc.days_off and date + min_shifts not in doc.FourSO and date + min_shifts + 1 not in doc.days_off:
                             cal[index + min_shifts].s4 = doc
                             doc.four_shifts += 1
@@ -765,7 +767,7 @@ def exportCal(fname,cal,year,month):
     
     wb.save(fname)
 
-def readInFourShifts(fname,docs,cal,year,month):
+def readInFourShifts(fname,docs,cal,year,month):   
     wb = xlrd.open_workbook(fname)
     sheet = wb.sheet_by_name("Color")
     firstDay = calendar.monthrange(year,month)[0]
@@ -798,6 +800,7 @@ def main():
     os.system('cls||clear')
 
     fname = sys.argv[1]
+    print(fname)
     docs,month,year,cal1,cal2,cal3 = read_input(fname)
     schedule = []
     #print(cal.prmonth(2020,5))

@@ -196,7 +196,9 @@ class Scheduler:
         """
         pat_cluster_gaps = self.identify_pat_gaps()
 
+        print("PAT Cluster Gaps:")
         for gap in pat_cluster_gaps:
+            print(f"Gap: {gap}, Start: {gap[0]}, Size: {gap[1]}, Type of Size: {type(gap[1])}")
             gap_start, gap_size = gap
 
             # Define cluster sizes based on gap size
@@ -214,7 +216,7 @@ class Scheduler:
                     continue
 
                 # Try to find a doctor for the cluster
-                selected_doc = self.find_doctor_for_cluster(cluster_days)
+                selected_doc = self.select_best_doctor_for_cluster(cluster_days)
 
                 if selected_doc is None:
                     # No eligible doctor found for this cluster size
@@ -235,15 +237,24 @@ class Scheduler:
 
     def identify_pat_gaps(self):
         """
-        Identify gaps between PAT clusters in the calendar.
+        Identify gaps between PAT's scheduled shifts in the calendar.
+
+        Returns:
+            list of tuples: Each tuple contains the start date of a gap and its size in days.
         """
         gaps = []
         last_pat_date = None
+
         for cal_day in self.calendar:
             if cal_day.is_shift_filled("s4") and cal_day.shifts["s4"].name == "PAT":
                 if last_pat_date and (cal_day.date - last_pat_date).days > 1:
-                    gaps.append((last_pat_date + timedelta(days=1), cal_day.date))
+                    gaps.append((last_pat_date + timedelta(days=1), (cal_day.date - last_pat_date).days - 1))
                 last_pat_date = cal_day.date
+
+        # If PAT's last shift doesn't reach the end of the calendar, capture the final gap
+        if last_pat_date and last_pat_date < self.calendar[-1].date:
+            gaps.append((last_pat_date + timedelta(days=1), (self.calendar[-1].date - last_pat_date).days))
+
         return gaps
 
     def determine_cluster_plan(self, gap_size):
@@ -312,7 +323,7 @@ class Scheduler:
                 return False
             if doctor.shift_prefs[3] == 0:  # Strong dislike for shift 4
                 return False
-            if doctor.shifts_scheduled >= doctor.max_shifts:
+            if doctor.total_shifts >= doctor.max_shifts:
                 return False
         return True
     
