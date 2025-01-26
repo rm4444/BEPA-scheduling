@@ -1,15 +1,9 @@
 from models import *
-#from scheduler import last3days, schedule1Shift, schedule2Shift, schedule3Shift, schedule4Shifts
-
 import pandas as pd
-import calendar
-import xlrd
 import openpyxl
-import re
 import numpy as np
 from columnar import columnar
-import math
-import os
+import calendar
 
 def print_calendar(calendar):
     """
@@ -35,3 +29,162 @@ def print_calendar(calendar):
 
         # Add a blank line between weeks
         print("\n")
+
+def load_month_and_year(filepath):
+    """
+    Load the month and year for scheduling from the "Color" sheet in the Excel file.
+
+    Args:
+        filepath (str): Path to the Excel file.
+
+    Returns:
+        tuple: (month, year) as integers.
+    """
+    # Load the "Color" sheet
+    color_sheet = pd.read_excel(filepath, sheet_name="Color", header=None)
+    
+    # Month is in cell L2 (row 1, column 11 in zero-based indexing)
+    month = int(color_sheet.iloc[1, 11])
+    
+    # Year is in cell L3 (row 2, column 11 in zero-based indexing)
+    year = int(color_sheet.iloc[2, 11])
+    
+    return month, year
+
+def load_doctor_inputs(filepath):
+    """
+    Load doctor inputs from the Excel file and initialize Doctor objects.
+
+    Args:
+        filepath (str): Path to the Excel file.
+
+    Returns:
+        list: List of Doctor objects.
+    """
+    workbook = openpyxl.load_workbook(filepath)
+    worksheet = workbook["Doctor Inputs"]
+
+    doctors = []
+    for row in worksheet.iter_rows(min_row=2, values_only=True):
+        if not row[0]:  # Skip rows without a name
+            continue
+
+        name = row[0].strip()
+        doc_type = row[2]
+        min_shifts, max_shifts = map(int, row[5].split(","))
+        shift_prefs = list(map(int, row[6].split(",")))
+        flip_shifts = bool(row[7])
+
+        # Create a Doctor object
+        doctor = Doctor(
+            name=name,
+            days_off=[],  # Temporarily empty, updated in the next step
+            shift_prefs=shift_prefs,
+            min_shifts=min_shifts,
+            max_shifts=max_shifts,
+            flip_shifts=flip_shifts,
+            doc_type=doc_type
+        )
+        doctors.append(doctor)
+
+    return doctors
+
+def load_shifts_requested_off(filepath, doctors, schedule_month, schedule_year):
+    """
+    Load shifts requested off and update the days_off attribute for each Doctor.
+
+    Args:
+        filepath (str): Path to the Excel file.
+        doctors (list): List of Doctor objects.
+        schedule_month (int): The month of the schedule (1-12).
+        schedule_year (int): The year of the schedule.
+    """
+    workbook = openpyxl.load_workbook(filepath, data_only=True)
+    worksheet = pd.DataFrame(workbook["Scheduling Worksheet"].values)
+
+    # Calculate the number of days in the given month
+    num_days = calendar.monthrange(schedule_year, schedule_month)[1]
+
+    for doctor in doctors:
+        doctor_row = worksheet[worksheet[0] == doctor.name]
+        if doctor_row.empty:
+            continue
+
+        flip_shifts = doctor.flip_shifts
+        days_off = []
+
+        # Loop through only the actual days in the month
+        for col_idx in range(5, 5 + num_days):  # Columns start at 5 for the 1st day
+            day = col_idx - 4  # Calculate the day (1-indexed)
+            value = doctor_row.iloc[0, col_idx]
+
+            # Treat NaN as False
+            is_day_off = pd.isna(value) or value == 0
+
+            # Adjust logic for flip_shifts and non-flip_shifts
+            if (flip_shifts and is_day_off) or (not flip_shifts and not is_day_off):
+                days_off.append(date(schedule_year, schedule_month, day))
+
+        # Assign processed days_off to the doctor
+        doctor.days_off = set(days_off)
+
+def load_previous_month_shifts(filepath, doctors, schedule_month, schedule_year):
+    last_4_days = get_last_days_of_previous_month(schedule_month, schedule_year)
+
+    workbook = openpyxl.load_workbook(filepath, data_only=True)  # Use data_only=True to resolve formulas
+    worksheet = workbook["Scheduling Worksheet"]
+
+    # Extract values and filter out invalid rows
+    rows = list(worksheet.values)
+    data_rows = [row for row in rows if row[0] and isinstance(row[0], str) and row[0].strip()]
+
+    for doctor in doctors:
+        # Find the row for the doctor
+        doctor_row = next((row for row in data_rows if row[0].strip() == doctor.name), None)
+
+        if not doctor_row:
+            #print(f"WARNING: No match found for Doctor {doctor.name} in the worksheet.")
+            continue
+
+        previous_month_shifts = []
+        for col_idx, day in zip(range(1, 5), last_4_days):  # Adjust column indices if needed
+            shift_type = doctor_row[col_idx] if len(doctor_row) > col_idx else None
+
+            # Ensure shift_type is an integer if valid, otherwise None
+            shift_type = int(shift_type) if shift_type and isinstance(shift_type, (int, float)) else None
+
+            if shift_type is not None:
+                previous_month_shifts.append((day, shift_type))
+
+        doctor.previous_month_shifts = previous_month_shifts
+
+def get_last_days_of_previous_month(schedule_month, schedule_year):
+    if schedule_month == 1:
+        prev_month = 12
+        prev_year = schedule_year - 1
+    else:
+        prev_month = schedule_month - 1
+        prev_year = schedule_year
+
+    num_days_prev_month = calendar.monthrange(prev_year, prev_month)[1]
+    last_4_days = [date(prev_year, prev_month, num_days_prev_month - i) for i in range(4)][::-1]
+    return last_4_days
+
+
+def print_doctor_info(doctors):
+    for doctor in doctors:
+        print(f"Doctor {doctor.name}:")
+        print(f"  - Days Off: {', '.join(str(day) for day in sorted(doctor.days_off)) if doctor.days_off else 'None'}")
+        print(f"  - Shift Preferences: {doctor.shift_prefs}")
+        print(f"  - Min Shifts: {doctor.min_shifts}, Max Shifts: {doctor.max_shifts}")
+        
+        # Format Previous Month Shifts
+        if doctor.previous_month_shifts:
+            formatted_shifts = ', '.join(f"Day {day}: Shift {shift}" for day, shift in doctor.previous_month_shifts)
+            print(f"  - Previous Month Shifts: {formatted_shifts}")
+        else:
+            print(f"  - Previous Month Shifts: None")
+        
+        print(f"  - Total Shifts Scheduled: {doctor.total_shifts}, Consecutive Shifts: {doctor.consecutive_shifts}")
+        print(f"  - Night Shifts: {doctor.night_shifts}, Weekend Shifts: {doctor.weekend_shifts}")
+        print("")

@@ -1,7 +1,7 @@
 from datetime import *
 
 class Doctor:
-    def __init__(self, name, days_off, shift_prefs, min_shifts, max_shifts, priority=0, previous_month_shifts=None):
+    def __init__(self, name, days_off, shift_prefs, min_shifts, max_shifts, flip_shifts, doc_type, previous_month_shifts=None):
         """
         Initialize a doctor with their attributes.
 
@@ -11,7 +11,8 @@ class Doctor:
             shift_prefs (list): Preferred shifts (1, 2, 3, 4).
             min_shifts (int): Minimum shifts the doctor wants to work.
             max_shifts (int): Maximum shifts the doctor can work.
-            priority (int): Calculated dynamic priority.
+            flip_shifts (boolean): If True, then invert days requested off
+            doc_type (string): E.g., full time, part time, locums
             previous_month_shifts (list): Shifts worked in the last 3 days of the previous month.
         """
         self.name = name
@@ -19,15 +20,13 @@ class Doctor:
         self.shift_prefs = shift_prefs
         self.min_shifts = min_shifts
         self.max_shifts = max_shifts
+        self.flip_shifts = flip_shifts
+        self.doc_type = doc_type
         self.total_shifts = 0
         self.night_shifts = 0
         self.weekend_shifts = 0
         self.consecutive_shifts = 0
-        self.priority = priority
-        self.previous_month_shifts = [
-            (day if isinstance(day, date) else date(2023, 12, day), shift_type)
-            for day, shift_type in (previous_month_shifts or [])
-        ]
+        self.previous_month_shifts = []
 
         # Initialize consecutive shifts based on the last month
         self.initialize_consecutive_shifts()

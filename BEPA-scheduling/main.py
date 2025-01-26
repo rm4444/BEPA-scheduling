@@ -3,47 +3,35 @@ from scheduler import *
 from models import *
 import sys
 import os
-import calendar
 
 def main():
-    cal = calendar.TextCalendar()
 
-    inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
-    while inp1.lower().strip() != "yes":
-        print()
-        print("You absolute nincompoop. Can't you follow one simple instruction? Let's try again.")
-        inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
-    print()
-    inp1 = input("Glad you agree. Now that that's settled, let's get to scheduling. Press enter to continue: ")
-    os.system('cls||clear')
+    # inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
+    # while inp1.lower().strip() != "yes":
+    #     print()
+    #     print("You absolute nincompoop. Can't you follow one simple instruction? Let's try again.")
+    #     inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
+    # print()
+    # inp1 = input("Glad you agree. Now that that's settled, let's get to scheduling. Press enter to continue: ")
+    # os.system('cls||clear')
 
-    fname = sys.argv[1]
-    docs,month,year,cal1,cal2,cal3 = read_input(fname)
-    schedule = []
-    #print(cal.prmonth(2020,5))
-    #print(calendar.monthrange(2020,8))
-    num_days = calendar.monthrange(year,month)[1]
-    DOYstart = calendar.monthrange(year,month)[0]
-    schedule.append(cal1)
-    schedule.append(cal2)
-    schedule.append(cal3)
-    for i in range(num_days):
-        schedule.append(CalDay(i+1))
-        weekendTracker = DOYstart + i
-        while weekendTracker >= 7:
-            weekendTracker -= 7
-        if weekendTracker == 5 or weekendTracker == 6:
-            schedule[i+3].weekend = True
-    #buildCal(docs, schedule, num_days, year, month, fname)
-    #printCal(docs,schedule,year,month)
-    #exportCal(fname,schedule,year,month)
-    os.system('cls||clear')
-    print()
-    print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")
-    print()
-    inp = input("Press enter to view the final schedule: ")
-    cmd = "start EXCEL.EXE " + fname
-    os.system(cmd)
+    filepath = sys.argv[1] #path to Excel file
+    month, year = load_month_and_year(filepath) #load in month and year as ints
+    print(f"Scheduling for: {month}/{year}")
+    
+    doctors = load_doctor_inputs(filepath) #load in doctor inputs (Name, Doc Type, Min / Max Shifts, Shift Prefs, Flip Shifts)
+    load_shifts_requested_off(filepath, doctors, month, year)
+    load_previous_month_shifts(filepath, doctors, month, year)
+
+    print_doctor_info(doctors)
+
+    # os.system('cls||clear')
+    # print()
+    # print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")
+    # print()
+    # inp = input("Press enter to view the final schedule: ")
+    # cmd = "start EXCEL.EXE " + filepath
+    # os.system(cmd)
 
 if __name__ == "__main__":
     main()
