@@ -58,8 +58,8 @@ def test_schedule_remaining_shift4():
     # Print the results
     print("\nSchedule Results:")
     for cal_day in calendar:
-        if cal_day.shift_assignments.get(4):
-            assigned_doc = cal_day.shift_assignments[4].name
+        if cal_day.shifts["s4"]:
+            assigned_doc = cal_day.shifts["s4"].name
             print(f"Day {cal_day.date}: Shift 4 assigned to {assigned_doc}")
         else:
             print(f"Day {cal_day.date}: Shift 4 is unfilled.")

@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import *
 
 class Doctor:
     def __init__(self, name, days_off, shift_prefs, min_shifts, max_shifts, priority=0, previous_month_shifts=None):

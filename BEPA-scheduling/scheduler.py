@@ -17,11 +17,32 @@ class Scheduler:
         self.doctors = doctors
         self.calendar = calendar
         self.previous_month_data = previous_month_data or {}
+        self.last_doctor_shift4 = None
 
         # Update doctors with previous month data if provided
         for doc in self.doctors:
             if doc.name in self.previous_month_data:
                 doc.previous_month_shifts = self.previous_month_data[doc.name]
+
+        self.prompt_for_last_shift4()
+
+    def prompt_for_last_shift4(self):
+        """
+        Prompt the user to input the name of the doctor who most recently worked a 4 shift.
+        Validate the input to ensure it matches a doctor in the list.
+        """
+        while True:
+            user_input = input("Enter the name of the doctor (other than PAT) who most recently worked a 4 shift: ").strip()
+            
+            # Check if the input matches a doctor in the list
+            matching_doctors = [doc for doc in self.doctors if doc.name.lower() == user_input.lower()]
+            if matching_doctors:
+                self.last_doctor_shift4 = matching_doctors[0]
+                break
+            else:
+                print("Error: doctor not recognized. Is this really that hard for you? I'm amazed you've even made it this far. Make sure you input a name from the list of doctors:")
+                for doc in self.doctors:
+                    print(f" - {doc.name}")
     
     def schedule_pat(self):
         """
@@ -202,38 +223,47 @@ class Scheduler:
             gap_start, gap_size = gap
 
             # Define cluster sizes based on gap size
-            cluster_sizes = self.determine_cluster_plan(gap_size)
+            while gap_size > 0:
+                cluster_sizes = self.determine_cluster_plan(gap_size)
+                scheduled = False  # Flag to track if we scheduled a cluster
 
-            for cluster_size in cluster_sizes:
-                gap_start_index = next(
-                    (i for i, cal_day in enumerate(self.calendar) if cal_day.date == gap_start),
-                    None
-                )
-                if gap_start_index is not None:
-                    cluster_days = self.calendar[gap_start_index:gap_start_index + cluster_size]
-                else:
-                    print(f"Error: gap_start {gap_start} not found in the calendar.")
-                    continue
+                for cluster_size in cluster_sizes:
+                    gap_start_index = next(
+                        (i for i, cal_day in enumerate(self.calendar) if cal_day.date == gap_start),
+                        None
+                    )
+                    if gap_start_index is not None:
+                        cluster_days = self.calendar[gap_start_index:gap_start_index + cluster_size]
+                    else:
+                        print(f"Error: gap_start {gap_start} not found in the calendar.")
+                        break
 
-                # Try to find a doctor for the cluster
-                selected_doc = self.select_best_doctor_for_cluster(cluster_days)
+                    # Try to find a doctor for the cluster
+                    selected_doc = self.select_best_doctor_for_cluster(cluster_days, cluster_size)
 
-                if selected_doc is None:
-                    # No eligible doctor found for this cluster size
-                    print(f"Could not schedule a cluster of size {cluster_size} starting on {gap_start}.")
-                    continue
-
-                # Assign the doctor to all days in the cluster
-                for cal_day in cluster_days:
-                    if cal_day.is_shift_filled("s4"):
+                    if selected_doc is None:
+                        print(f"Could not schedule a cluster of size {cluster_size} starting on {gap_start}.")
                         continue
 
-                    # Assign the shift and update the doctor's consecutive shifts
-                    cal_day.shifts["s4"] = selected_doc
-                    selected_doc.increment_consecutive_shifts()
+                    # Assign the doctor to all days in the cluster
+                    for cal_day in cluster_days:
+                        if cal_day.is_shift_filled("s4"):
+                            continue
 
-                # Break the loop once a valid cluster is scheduled
-                break
+                        cal_day.shifts["s4"] = selected_doc
+                        selected_doc.assign_shift(cal_day.date, 4, cal_day.weekend)
+                        self.last_doctor_shift4 = selected_doc
+
+                    # Update the gap information
+                    gap_start = cluster_days[-1].date + timedelta(days=1)
+                    gap_size -= cluster_size
+                    scheduled = True
+                    break  # Exit the loop once a cluster is scheduled
+
+                if not scheduled:
+                    # No cluster could be scheduled for this gap
+                    print(f"Could not schedule any clusters for the remaining gap starting at {gap_start}.")
+                    break
 
     def identify_pat_gaps(self):
         """
@@ -245,6 +275,17 @@ class Scheduler:
         gaps = []
         last_pat_date = None
 
+        # Find the first PAT shift
+        pat_shift_dates = [
+            cal_day.date
+            for cal_day in self.calendar
+            if cal_day.is_shift_filled("s4") and cal_day.shifts["s4"].name == "PAT"
+        ]
+
+        # Add a gap from the start of the calendar to the first PAT shift, if applicable
+        if pat_shift_dates and pat_shift_dates[0] > self.calendar[0].date:
+            gaps.append((self.calendar[0].date, (pat_shift_dates[0] - self.calendar[0].date).days))
+
         for cal_day in self.calendar:
             if cal_day.is_shift_filled("s4") and cal_day.shifts["s4"].name == "PAT":
                 if last_pat_date and (cal_day.date - last_pat_date).days > 1:
@@ -255,7 +296,27 @@ class Scheduler:
         if last_pat_date and last_pat_date < self.calendar[-1].date:
             gaps.append((last_pat_date + timedelta(days=1), (self.calendar[-1].date - last_pat_date).days))
 
+        print("Gaps: ", gaps)
         return gaps
+    
+    def select_best_doctor_for_cluster(self, cluster_days, cluster_size):
+        """
+        Select the best doctor to fill a given cluster.
+        """
+        best_doctor = None
+        available_doctors = self.get_available_doctors_for_shift4_cluster(cluster_days, cluster_size)
+        print(f"Available doctors: {[doc.name for doc in available_doctors]}")
+
+        best_doctor = sorted(
+            available_doctors,
+            key=lambda doc: (
+                -doc.shift_prefs[3],  # Higher shift preference for s4 is better
+                doc == self.last_doctor_shift4,  # De-prioritize the last doctor to work s4 (True sorts after False)
+                doc.total_shifts  # Least shifts scheduled
+            ),
+        )[0]
+
+        return best_doctor
 
     def determine_cluster_plan(self, gap_size):
         """
@@ -288,41 +349,48 @@ class Scheduler:
                     plan.append(1)
                     gap_size -= 1
             return plan
-
-    def select_best_doctor_for_cluster(self, cluster_days):
-        """
-        Select the best doctor to fill a given cluster.
-        """
-        best_doctor = None
-        best_priority = float('-inf')
-
-        for doctor in self.doctors:
-            if not self.is_doctor_eligible_for_cluster(doctor, cluster_days):
-                continue
-
-            # Calculate prioritization score
-            priority_score = (
-                doctor.shift_prefs[3],  # Preference for shift 4
-                self.calculate_cluster_potential(doctor, cluster_days),  # Avoid 1-day clusters
-                self.get_last_shift4_recency(doctor),  # Least recent shift 4 first
-                doctor.max_shifts - doctor.shifts_scheduled  # Farthest from max shifts
-            )
-
-            if priority_score > best_priority:
-                best_priority = priority_score
-                best_doctor = doctor
-
-        return best_doctor
     
-    def is_doctor_eligible_for_cluster(self, doctor, cluster_days):
+    def is_doctor_eligible_for_cluster(self, doctor, cluster_days, cluster_size):
         """
-        Check if a doctor is eligible to work all days in the given cluster.
+        Check if a doctor is eligible to work a given cluster of shift 4 days.
+
+        Args:
+            doctor (Doctor): The doctor being checked.
+            cluster_days (list of CalDay): Days in the cluster being scheduled.
+
+        Returns:
+            bool: True if the doctor is eligible, False otherwise.
         """
-        for cal_day in cluster_days:
-            if cal_day.date in doctor.days_off or (cal_day.date + timedelta(days=1)) in doctor.days_off:
-                return False
-            if doctor.shift_prefs[3] == 0:  # Strong dislike for shift 4
-                return False
-            if doctor.total_shifts >= doctor.max_shifts:
-                return False
+        # Check if the doctor has a shift preference for shift 4 greater than 0
+        if doctor.shift_prefs[3] == 0:
+            return False
+
+        # Don't schedule PAT
+        if doctor.name == "PAT":
+            return False
+        
+        # Check if the doctor has the day off for any day in the cluster
+        if any(day.date in doctor.days_off for day in cluster_days):
+            return False
+
+        # Check if the doctor has the following day off (to avoid breaking clusters)
+        if any((day.date + timedelta(days=1)) in doctor.days_off for day in cluster_days):
+            return False
+
+        # Check if the doctor has reached their max shifts
+        if (doctor.total_shifts + cluster_size) >= doctor.max_shifts:
+            return False
+
         return True
+
+    def get_available_doctors_for_shift4_cluster(self, cluster_days, cluster_size):
+        """
+        Generate a list of doctors who are eligible to work a given cluster of shift 4 days.
+
+        Args:
+            cluster_days (list of CalDay): Days in the cluster being scheduled.
+
+        Returns:
+            list of Doctor: Doctors who are eligible for the given cluster.
+        """
+        return [doctor for doctor in self.doctors if self.is_doctor_eligible_for_cluster(doctor, cluster_days, cluster_size)]
