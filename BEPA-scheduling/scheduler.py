@@ -12,7 +12,7 @@ class Scheduler:
         Args:
             doctors (list): List of Doctor objects.
             calendar (list): List of CalDay objects for the month.
-            previous_month_data (dict): Optional data for shifts from the last 3 days of the previous month.
+            previous_month_data (dict): Optional data for shifts from the last 4 days of the previous month.
         """
         self.doctors = doctors
         self.calendar = calendar

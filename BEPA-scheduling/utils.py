@@ -11,21 +11,55 @@ def print_calendar(calendar):
     Each day shows who is scheduled for each of the 4 shifts.
     """
     days_per_week = 7
-    num_weeks = (len(calendar) + days_per_week - 1) // days_per_week
+    column_width = 10  # Fixed width for each column
 
-    print("\nSchedule for January 2024:")
-    print("=" * 50)
+    print("\nSchedule:")
+    print("=" * (column_width * days_per_week))
 
-    for week in range(num_weeks):
-        # Extract days for the current week
-        week_days = calendar[week * days_per_week : (week + 1) * days_per_week]
+    # Calculate the weekday of the first date in the calendar (0 = Sunday, 6 = Saturday)
+    if not calendar:
+        print("No days in the calendar.")
+        return
 
+    first_day_weekday = calendar[0].date.weekday()
+    first_day_weekday = (first_day_weekday + 1) % 7  # Convert Python's weekday (0=Monday) to Sunday-start
+
+    # Add an offset for the first week
+    week_offset = [" " * column_width] * first_day_weekday
+
+    # Group days into weeks
+    weeks = []
+    current_week = week_offset
+
+    for day in calendar:
+        current_week.append(day)
+        if len(current_week) == days_per_week:
+            weeks.append(current_week)
+            current_week = []
+
+    if current_week:
+        # Fill the last week with empty spaces if necessary
+        current_week.extend([" " * column_width] * (days_per_week - len(current_week)))
+        weeks.append(current_week)
+
+    # Print each week
+    for week in weeks:
         # Print dates as headers
-        print("  ".join(f"{day.date.strftime('%b %d')}" for day in week_days))
+        header_row = "".join(
+            f"{(day.date.strftime('%b %d') if isinstance(day, CalDay) else day):^{column_width}}"
+            for day in week
+        )
+        print(header_row)
 
         # Print scheduled doctors for each shift
-        for shift in range(1, 5):  # Shift 1 to Shift 4
-            print("  ".join(day.scheduled_doctors.get(shift, "-----") for day in week_days))
+        for shift in ["s1", "s2", "s3", "s4"]:  # Shift 1 to Shift 4
+            shift_row = "".join(
+                f"{(day.shifts[shift].name if isinstance(day, CalDay) and day.shifts[shift] else '-----'):^{column_width}}"
+                if isinstance(day, CalDay)
+                else f"{day:^{column_width}}"
+                for day in week
+            )
+            print(shift_row)
 
         # Add a blank line between weeks
         print("\n")
@@ -188,3 +222,65 @@ def print_doctor_info(doctors):
         print(f"  - Total Shifts Scheduled: {doctor.total_shifts}, Consecutive Shifts: {doctor.consecutive_shifts}")
         print(f"  - Night Shifts: {doctor.night_shifts}, Weekend Shifts: {doctor.weekend_shifts}")
         print("")
+
+import openpyxl
+from datetime import datetime
+
+def write_scheduled_shifts(filepath, doctors, schedule_month, schedule_year):
+    """
+    Write scheduled shifts back into the "Color" tab of the Excel file.
+
+    Args:
+        filepath (str): Path to the Excel file.
+        doctors (list): List of Doctor objects.
+        schedule_month (int): The month of the schedule (1-12).
+        schedule_year (int): The year of the schedule.
+    """
+    # Load the workbook and "Color" sheet
+    workbook = openpyxl.load_workbook(filepath)
+    color_sheet = workbook["Color"]
+
+    # Define rows corresponding to each week's dates
+    date_rows = [4, 11, 18, 25, 32, 39]
+
+    # Determine the starting column for the 1st day of the month
+    first_day_of_month = datetime(schedule_year, schedule_month, 1)
+    weekday_to_column = {
+        6: 2,  # Sunday -> Column B
+        0: 3,  # Monday -> Column C
+        1: 4,  # Tuesday -> Column D
+        2: 5,  # Wednesday -> Column E
+        3: 6,  # Thursday -> Column F
+        4: 7,  # Friday -> Column G
+        5: 8,  # Saturday -> Column H
+    }
+    start_column = weekday_to_column[first_day_of_month.weekday()]
+
+    # Loop through each doctor and their scheduled shifts
+    for doctor in doctors:
+        for shift in doctor.scheduled_shifts:
+            # Extract shift information
+            shift_date = shift["date"]
+            shift_type = shift["type"]  # e.g., 1, 2, 3, or 4
+
+            # Calculate the column for the day
+            day_offset = shift_date.day - 1
+            column = start_column + day_offset
+
+            # Determine the base row for the week of the date
+            week_index = day_offset // 7  # Zero-based week index
+            if week_index < len(date_rows):
+                week_base_row = date_rows[week_index]
+            else:
+                raise ValueError(f"Invalid date {shift_date} for scheduling")
+
+            # Add shift-specific row offset
+            shift_row = week_base_row + shift_type
+
+            # Write the doctor's name into the cell
+            cell = color_sheet.cell(row=shift_row, column=column)
+            cell.value = doctor.name
+
+    # Save the workbook
+    workbook.save(filepath)
+    print(f"Scheduled shifts successfully written to {filepath}")

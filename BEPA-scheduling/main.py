@@ -2,6 +2,7 @@ from utils import *
 from scheduler import *
 from models import *
 import sys
+from calendar import monthrange
 import os
 
 def main():
@@ -22,8 +23,16 @@ def main():
     doctors = load_doctor_inputs(filepath) #load in doctor inputs (Name, Doc Type, Min / Max Shifts, Shift Prefs, Flip Shifts)
     load_shifts_requested_off(filepath, doctors, month, year)
     load_previous_month_shifts(filepath, doctors, month, year)
-
     print_doctor_info(doctors)
+
+    num_days = monthrange(year, month)[1]
+    calendar = [CalDay(date(year, month, day)) for day in range(1, num_days+1)]
+    scheduler = Scheduler(doctors, calendar)
+    scheduler.schedule_pat()
+    scheduler.schedule_remaining_shift4()
+
+    print_calendar(calendar)
+    #write_scheduled_shifts(filepath, doctors, month, year)
 
     # os.system('cls||clear')
     # print()
