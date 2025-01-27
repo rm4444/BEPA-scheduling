@@ -32,7 +32,7 @@ def main():
     scheduler.schedule_remaining_shift4()
 
     print_calendar(calendar)
-    #write_scheduled_shifts(filepath, doctors, month, year)
+    write_scheduled_shifts(filepath, calendar, month, year)
 
     # os.system('cls||clear')
     # print()

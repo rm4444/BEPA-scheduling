@@ -1,9 +1,6 @@
 from models import *
 from datetime import date, timedelta
 
-import numpy as np
-from columnar import columnar
-
 class Scheduler:
     def __init__(self, doctors, calendar, previous_month_data=None):
         """

@@ -1,7 +1,6 @@
 from models import *
 import pandas as pd
 import openpyxl
-import numpy as np
 from columnar import columnar
 import calendar
 
@@ -226,13 +225,13 @@ def print_doctor_info(doctors):
 import openpyxl
 from datetime import datetime
 
-def write_scheduled_shifts(filepath, doctors, schedule_month, schedule_year):
+def write_scheduled_shifts(filepath, calendar, schedule_month, schedule_year):
     """
     Write scheduled shifts back into the "Color" tab of the Excel file.
 
     Args:
         filepath (str): Path to the Excel file.
-        doctors (list): List of Doctor objects.
+        calendar (list): List of CalDay objects containing shift assignments.
         schedule_month (int): The month of the schedule (1-12).
         schedule_year (int): The year of the schedule.
     """
@@ -244,7 +243,8 @@ def write_scheduled_shifts(filepath, doctors, schedule_month, schedule_year):
     date_rows = [4, 11, 18, 25, 32, 39]
 
     # Determine the starting column for the 1st day of the month
-    first_day_of_month = datetime(schedule_year, schedule_month, 1)
+    first_day_of_month = datetime(schedule_year, schedule_month, 1).date()
+
     weekday_to_column = {
         6: 2,  # Sunday -> Column B
         0: 3,  # Monday -> Column C
@@ -256,30 +256,30 @@ def write_scheduled_shifts(filepath, doctors, schedule_month, schedule_year):
     }
     start_column = weekday_to_column[first_day_of_month.weekday()]
 
-    # Loop through each doctor and their scheduled shifts
-    for doctor in doctors:
-        for shift in doctor.scheduled_shifts:
-            # Extract shift information
-            shift_date = shift["date"]
-            shift_type = shift["type"]  # e.g., 1, 2, 3, or 4
+    # Loop through each CalDay object in the calendar
+    for cal_day in calendar:
+        day_offset = (cal_day.date - first_day_of_month).days
 
-            # Calculate the column for the day
-            day_offset = shift_date.day - 1
-            column = start_column + day_offset
+        # Calculate the column for the current day (with wrapping)
+        column = (start_column + day_offset - 2) % 7 + 2
 
-            # Determine the base row for the week of the date
-            week_index = day_offset // 7  # Zero-based week index
-            if week_index < len(date_rows):
-                week_base_row = date_rows[week_index]
-            else:
-                raise ValueError(f"Invalid date {shift_date} for scheduling")
+        # Determine the base row for the week of the date
+        week_index = (start_column + day_offset - 2) // 7
+        if week_index < len(date_rows):
+            week_base_row = date_rows[week_index]
+        else:
+            raise ValueError(f"Invalid date {cal_day.date} for scheduling")
 
-            # Add shift-specific row offset
-            shift_row = week_base_row + shift_type
+        # Write scheduled shifts for the day
+        for shift_type, doctor in cal_day.shifts.items():
+            if doctor:
+                # Convert shift type (e.g., "s1", "s2") to row offset
+                shift_number = int(shift_type[1])
+                shift_row = week_base_row + shift_number
 
-            # Write the doctor's name into the cell
-            cell = color_sheet.cell(row=shift_row, column=column)
-            cell.value = doctor.name
+                # Write the doctor's name into the cell
+                cell = color_sheet.cell(row=shift_row, column=column)
+                cell.value = doctor.name
 
     # Save the workbook
     workbook.save(filepath)
