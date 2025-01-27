@@ -1,7 +1,7 @@
 from datetime import *
 
 class Doctor:
-    def __init__(self, name, days_off, shift_prefs, min_shifts, max_shifts, flip_shifts, doc_type, previous_month_shifts=None):
+    def __init__(self, name, days_off, shift_prefs, min_shifts, max_shifts, flip_shifts, doc_type):
         """
         Initialize a doctor with their attributes.
 
@@ -118,12 +118,3 @@ class CalDay:
     def __repr__(self):
         assigned = {shift: doc.name if doc else None for shift, doc in self.shifts.items()}
         return f"<CalendarDay {self.date} - Assignments: {assigned}>"
-
-
-# class Gap:
-#     def __init__(self,start_date,length):
-#         self.start_date = start_date
-#         self.length = length
-#         self.remaining = length
-#         self.filled = False
-#         self.docs = []
