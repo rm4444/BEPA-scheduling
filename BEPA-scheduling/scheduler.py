@@ -222,16 +222,60 @@ class Scheduler:
 
     def schedule_remaining_shift4(self):
         """
-        Schedule the remaining s4 shifts for doctors.
+        Schedule the remaining shift 4s for doctors after PAT has been scheduled.
+        If PAT is not scheduled early and a doctor other than PAT worked the last 4-shift of the previous month,
+        that doctor will be prioritized for the first shift-4 cluster of the month.
         """
         pat_cluster_gaps = self.identify_pat_gaps()
 
-        #print("PAT Cluster Gaps:")
+        # Ensure that PAT is not scheduled on the first day of the month
+        first_day_of_month = self.calendar[0]
+        pat_scheduled_first_day = first_day_of_month.shifts["s4"] and first_day_of_month.shifts["s4"].name == "PAT"
+
+        # Check if PAT worked the last shift-4 of the previous month
+        last_day_prev_month = max((shift_date for doc in self.doctors for shift_date, shift_type in doc.previous_month_shifts if shift_type == 4), default=None)
+
+        if last_day_prev_month:
+            last_shift_doc = next((doc for doc in self.doctors if (last_day_prev_month, 4) in doc.previous_month_shifts), None)
+            pat_scheduled_last_day = last_shift_doc and last_shift_doc.name == "PAT"
+        else:
+            pat_scheduled_last_day = False  # No shift data available, assume PAT was not scheduled
+
+        # If PAT is NOT scheduled on the first day AND NOT scheduled on the last day of the previous month AND last doctor was not PAT, prioritize that doctor
+        if not pat_scheduled_first_day and not pat_scheduled_last_day and self.last_doctor_shift4 and self.last_doctor_shift4.name != "PAT":
+            first_gap = pat_cluster_gaps[0] if pat_cluster_gaps else None
+
+            if first_gap:
+                gap_start, gap_size = first_gap
+
+                # Fetch doctor's previous month shift count
+                last_doc_prev_shift_count = sum(1 for shift_date, shift_type in self.last_doctor_shift4.previous_month_shifts if shift_type == 4)
+
+                # Determine how many more shifts they should work in the first cluster
+                max_additional_shifts = max(0, 3 - last_doc_prev_shift_count)  # Ensure they don’t exceed 3 shifts in a row
+
+                # Try scheduling them if they are eligible
+                if max_additional_shifts > 0:
+                    gap_start_index = next(
+                        (i for i, cal_day in enumerate(self.calendar) if cal_day.date == gap_start), None
+                    )
+
+                    if gap_start_index is not None:
+                        cluster_days = self.calendar[gap_start_index:gap_start_index + max_additional_shifts]
+                        
+                        if self.is_doctor_eligible_for_cluster(self.last_doctor_shift4, cluster_days, max_additional_shifts):
+                            for i, cal_day in enumerate(cluster_days):
+                                if not cal_day.is_shift_filled("s4"):
+                                    cal_day.shifts["s4"] = self.last_doctor_shift4
+                                    self.last_doctor_shift4.assign_shift(cal_day.date, 4, cal_day.weekend)
+
+                            # Reduce the gap size accordingly
+                            pat_cluster_gaps[0] = (cluster_days[-1].date + timedelta(days=1), gap_size - max_additional_shifts)
+
+        # Proceed with normal scheduling for the remaining gaps
         for gap in pat_cluster_gaps:
-            #print(f"Gap: {gap}, Start: {gap[0]}, Size: {gap[1]}, Type of Size: {type(gap[1])}")
             gap_start, gap_size = gap
 
-            # Define cluster sizes based on gap size
             while gap_size > 0:
                 cluster_sizes = self.determine_cluster_plan(gap_size)
                 scheduled = False  # Flag to track if we scheduled a cluster
