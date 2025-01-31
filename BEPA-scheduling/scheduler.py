@@ -2,7 +2,7 @@ from models import *
 from datetime import date, timedelta
 
 class Scheduler:
-    def __init__(self, doctors, calendar, previous_month_data=None):
+    def __init__(self, doctors, calendar):
         """
         Initialize the scheduler with doctors, a calendar, and optional previous month data.
 
@@ -13,22 +13,34 @@ class Scheduler:
         """
         self.doctors = doctors
         self.calendar = calendar
-        self.previous_month_data = previous_month_data or {}
         self.last_doctor_shift4 = None
 
-        # Update doctors with previous month data if provided
-        for doc in self.doctors:
-            if doc.name in self.previous_month_data:
-                doc.previous_month_shifts = self.previous_month_data[doc.name]
+        self.set_initial_last_shift4()
 
-        self.prompt_for_last_shift4()
+    def set_initial_last_shift4(self):
+        """
+        Determine the last doctor (other than PAT) who worked a 4 shift in the previous month.
+        If no such doctor is found, prompt the user for input.
+        """
+        all_last_month_4shifts = []
 
-    def prompt_for_last_shift4(self):
-        """
-        Prompt the user to input the name of the doctor who most recently worked a 4 shift.
-        Validate the input to ensure it matches a doctor in the list.
-        """
-        while True:
+        # Collect all previous month 4-shifts across all doctors
+        for doctor in self.doctors:
+            for shift_date, shift_type in doctor.previous_month_shifts:
+                if shift_type == 4:  # Only consider 4 shifts
+                    all_last_month_4shifts.append((shift_date, doctor))
+
+        # Sort all 4-shifts by date (latest first)
+        all_last_month_4shifts.sort(key=lambda x: x[0], reverse=True)
+
+        # Find the most recent 4-shift worked by a doctor other than PAT
+        for shift_date, doctor in all_last_month_4shifts:
+            if doctor.name != "PAT":
+                self.last_doctor_shift4 = doctor
+                #print(f"Automatically set last_doctor_shift4 to {doctor.name} (worked last 4 shift on {shift_date})")
+                return  # Exit early once the most recent non-PAT doctor is found
+
+        while True: #prompt user for a doctor if PAT worked all 4 previous 4-shifts
             user_input = input("Enter the name of the doctor (other than PAT) who most recently worked a 4 shift: ").strip()
             
             # Check if the input matches a doctor in the list
@@ -146,7 +158,7 @@ class Scheduler:
                     pat.assign_shift(current_day.date, 4, current_day.weekend)
                     days_scheduled += 1
                     last_shift_date = current_day.date
-                    print(f"Day {current_day.date}: Shift 4 assigned to PAT.")
+                    #print(f"Day {current_day.date}: Shift 4 assigned to PAT.")
 
             # Skip past the scheduled cluster
             index += cluster_size
@@ -214,9 +226,9 @@ class Scheduler:
         """
         pat_cluster_gaps = self.identify_pat_gaps()
 
-        print("PAT Cluster Gaps:")
+        #print("PAT Cluster Gaps:")
         for gap in pat_cluster_gaps:
-            print(f"Gap: {gap}, Start: {gap[0]}, Size: {gap[1]}, Type of Size: {type(gap[1])}")
+            #print(f"Gap: {gap}, Start: {gap[0]}, Size: {gap[1]}, Type of Size: {type(gap[1])}")
             gap_start, gap_size = gap
 
             # Define cluster sizes based on gap size
@@ -257,11 +269,6 @@ class Scheduler:
                     scheduled = True
                     break  # Exit the loop once a cluster is scheduled
 
-                if not scheduled:
-                    # No cluster could be scheduled for this gap
-                    print(f"Could not schedule any clusters for the remaining gap starting at {gap_start}.")
-                    break
-
     def identify_pat_gaps(self):
         """
         Identify gaps between PAT's scheduled shifts in the calendar.
@@ -293,7 +300,7 @@ class Scheduler:
         if last_pat_date and last_pat_date < self.calendar[-1].date:
             gaps.append((last_pat_date + timedelta(days=1), (self.calendar[-1].date - last_pat_date).days))
 
-        print("Gaps: ", gaps)
+        #print("Gaps: ", gaps)
         return gaps
     
     def select_best_doctor_for_cluster(self, cluster_days, cluster_size):
@@ -302,7 +309,7 @@ class Scheduler:
         """
         best_doctor = None
         available_doctors = self.get_available_doctors_for_shift4_cluster(cluster_days, cluster_size)
-        print(f"Available doctors: {[doc.name for doc in available_doctors]}")
+        #print(f"Available doctors: {[doc.name for doc in available_doctors]}")
 
         best_doctor = sorted(
             available_doctors,

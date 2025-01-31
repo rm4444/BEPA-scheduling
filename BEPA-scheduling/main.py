@@ -23,7 +23,7 @@ def main():
     doctors = load_doctor_inputs(filepath) #load in doctor inputs (Name, Doc Type, Min / Max Shifts, Shift Prefs, Flip Shifts)
     load_shifts_requested_off(filepath, doctors, month, year)
     load_previous_month_shifts(filepath, doctors, month, year)
-    print_doctor_info(doctors)
+    #print_doctor_info(doctors)
 
     num_days = monthrange(year, month)[1]
     calendar = [CalDay(date(year, month, day)) for day in range(1, num_days+1)]
@@ -32,7 +32,7 @@ def main():
     scheduler.schedule_remaining_shift4()
 
     print_calendar(calendar)
-    write_scheduled_shifts(filepath, calendar, month, year)
+    #write_scheduled_shifts(filepath, calendar, month, year)
 
     # os.system('cls||clear')
     # print()
