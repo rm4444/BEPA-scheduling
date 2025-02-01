@@ -100,12 +100,11 @@ class Scheduler:
                             #print("Cluster has reached the maximum size of 4 days. Stopping extension.\n")
                             break
 
-                        if cal_day.assign_shift("s4", pat):
-                            pat.assign_shift(cal_day.date, 4, cal_day.weekend)
+                        if self.assign_shift(cal_day, pat, "s4"):
                             days_scheduled += 1
                             last_shift_date = cal_day.date
                             consecutive_days += 1
-                            print(f"Day {cal_day.date}: Shift 4 assigned to PAT (extending previous cluster).")
+                            #print(f"Day {cal_day.date}: Shift 4 assigned to PAT (extending previous cluster).")
                     else:
                         #print("Cluster extension complete. Transitioning to new scheduling.\n")
                         break
@@ -154,8 +153,7 @@ class Scheduler:
                 if current_day.date in pat.days_off or current_day.is_shift_filled("s4"):
                     break
 
-                if current_day.assign_shift("s4", pat):
-                    pat.assign_shift(current_day.date, 4, current_day.weekend)
+                if self.assign_shift(current_day, pat, "s4"):
                     days_scheduled += 1
                     last_shift_date = current_day.date
                     #print(f"Day {current_day.date}: Shift 4 assigned to PAT.")
@@ -266,8 +264,7 @@ class Scheduler:
                         if self.is_doctor_eligible_for_cluster(self.last_doctor_shift4, cluster_days, max_additional_shifts):
                             for i, cal_day in enumerate(cluster_days):
                                 if not cal_day.is_shift_filled("s4"):
-                                    cal_day.shifts["s4"] = self.last_doctor_shift4
-                                    self.last_doctor_shift4.assign_shift(cal_day.date, 4, cal_day.weekend)
+                                    self.assign_shift(cal_day, self.last_doctor_shift4, "s4")
 
                             # Reduce the gap size accordingly
                             pat_cluster_gaps[0] = (cluster_days[-1].date + timedelta(days=1), gap_size - max_additional_shifts)
@@ -303,8 +300,7 @@ class Scheduler:
                         if cal_day.is_shift_filled("s4"):
                             continue
 
-                        cal_day.shifts["s4"] = selected_doc
-                        selected_doc.assign_shift(cal_day.date, 4, cal_day.weekend)
+                        self.assign_shift(cal_day, selected_doc, "s4")
                         self.last_doctor_shift4 = selected_doc
 
                     # Update the gap information
@@ -442,3 +438,21 @@ class Scheduler:
             list of Doctor: Doctors who are eligible for the given cluster.
         """
         return [doctor for doctor in self.doctors if self.is_doctor_eligible_for_cluster(doctor, cluster_days, cluster_size)]
+    
+    def assign_shift(self, cal_day, doctor, shift_type):
+        """
+        Assigns a doctor to a shift, ensuring both calendar and doctor records are updated.
+
+        Args:
+            cal_day (CalDay): The calendar day object where the shift is assigned.
+            doctor (Doctor): The doctor being assigned to the shift.
+            shift_type (str): The shift type ('s1', 's2', 's3', 's4').
+
+        Returns:
+            bool: True if the assignment was successful, False otherwise.
+        """
+        if cal_day.assign_shift(shift_type, doctor):  # Assign to the calendar first
+            doctor.assign_shift(cal_day, shift_type)  # Assign to the doctor's record
+            print(f"DEBUG: Successfully assigned {doctor.name} to {shift_type} on {cal_day.date.strftime('%b %d')}")
+            return True
+        return False
