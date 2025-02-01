@@ -288,7 +288,7 @@ def write_scheduled_shifts(filepath, calendar, schedule_month, schedule_year):
     print(f"Scheduled shifts successfully written to {filepath}")
     open_excel_file(filepath)
 
-def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, schedule_year):
+def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, schedule_year, scheduler):
     """
     Read manually assigned shift 4 schedules from Excel and update the calendar.
 
@@ -298,13 +298,14 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
         doctors (list): List of Doctor objects.
         schedule_month (int): The month of the schedule (1-12).
         schedule_year (int): The year of the schedule.
+        scheduler (Scheduler): The scheduler instance to assign shifts.
     """
     # Load the workbook and select the "Color" sheet
     workbook = openpyxl.load_workbook(filepath, data_only=True)
     color_sheet = workbook["Color"]
 
     # Define rows corresponding to each week's dates
-    date_rows = [4, 11, 18, 25, 32, 39]
+    date_rows = [4, 11, 18, 25, 32, 39]  # Start rows for each week
 
     # Determine the starting column for the 1st day of the month
     first_day_of_month = datetime(schedule_year, schedule_month, 1)
@@ -323,40 +324,57 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
     for cal_day in calendar:
         cal_day.shifts["s4"] = None  # Reset previous assignments
 
+    # Debug print: Track row/column assignments
+    print("\n--- Reading Manual Shift 4 Assignments ---")
+
     # Iterate over each week
     for week_index, week_base_row in enumerate(date_rows):
         for day_offset in range(7):  # 7 days in a week
+            # Calculate column
             column = start_column + day_offset
-            if column > 8:  # If past column H, reset to B
+            if column == 9:
+                week_base_row += 7
+            if column > 8:  # If past column H, reset to B and increment row
                 column = 2 + (column - 9)
 
-            # Get the actual date for this column
+            # Calculate actual shift date
             shift_date = first_day_of_month + timedelta(days=week_index * 7 + day_offset)
+            shift_date = shift_date.date()  # Convert to datetime.date
+
+            # Find corresponding calendar day
+            cal_day = next((day for day in calendar if day.date == shift_date), None)
+
+            # Debugging: Print column/row mapping
+            print(f"DEBUG: Processing {shift_date.strftime('%b %d')} | Row: {week_base_row + 4}, Column: {column} | CalDay: {cal_day}")
 
             # Ensure the date is within the current month
             if shift_date.month != schedule_month:
                 continue
 
-            # Determine row where Shift 4 assignments are stored
+            # If cal_day is None, print an error and continue
+            if not cal_day:
+                print(f"WARNING: No matching calendar day found for {shift_date}. Skipping.")
+                continue
+
+            # Determine the row where Shift 4 assignments are stored
             shift4_row = week_base_row + 4  # Shift 4 is always row 4 below the date row
 
             # Read doctor name from Excel
             cell_value = color_sheet.cell(row=shift4_row, column=column).value
-            if not cell_value:
-                continue  # No doctor assigned, skip
 
             # Find the corresponding doctor object
             assigned_doctor = next((doc for doc in doctors if doc.name == cell_value), None)
-            if assigned_doctor:
-                # Find the corresponding calendar day and update it
-                for cal_day in calendar:
-                    if cal_day.date == shift_date:
-                        cal_day.assign_shift("s4", assigned_doctor)
-                        print(f"DEBUG: Shift 4 on {shift_date.strftime('%b %d')} updated to {assigned_doctor.name}")
-                        break
+            if assigned_doctor is not None:
+                scheduler.assign_shift(cal_day, assigned_doctor, "s4")
+            else:
+                print(f"WARNING: No matching doctor found for {shift_date.strftime('%b %d')}!")
 
     workbook.close()
     print("\nManual 4-shift assignments successfully read and applied.\n")
+
+    # Debug: Print final state of shift 4 assignments
+    for cal_day in calendar:
+        print(f"DEBUG CHECK: {cal_day.date.strftime('%b %d')} Shift 4: {cal_day.shifts['s4'].name if cal_day.shifts['s4'] else 'None'}")
 
 def open_excel_file(filepath):
     """

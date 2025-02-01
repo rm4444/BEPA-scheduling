@@ -35,9 +35,9 @@ def main():
     write_scheduled_shifts(filepath, calendar, month, year)
 
     # Load manually adjusted 4-shifts from Excel before scheduling
-    # inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
-    # read_manual_shift4_assignments(filepath, calendar, doctors, month, year)
-    # print_calendar(calendar)
+    inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
+    read_manual_shift4_assignments(filepath, calendar, doctors, month, year,scheduler)
+    print_calendar(calendar)
 
     # Now proceed with scheduling remaining shifts
     #scheduler = Scheduler(doctors, calendar)
