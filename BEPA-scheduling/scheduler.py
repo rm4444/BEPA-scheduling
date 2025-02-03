@@ -291,7 +291,7 @@ class Scheduler:
                     self.reset_consecutive_shifts(gap_start)
 
                     # Try to find a doctor for the cluster
-                    selected_doc = self.select_best_doctor_for_cluster(cluster_days, cluster_size)
+                    selected_doc = self.select_best_doctor_for_4cluster(cluster_days, cluster_size)
 
                     if selected_doc is None:
                         print(f"Could not schedule a cluster of size {cluster_size} starting on {gap_start}.")
@@ -345,7 +345,7 @@ class Scheduler:
         #print("Gaps: ", gaps)
         return gaps
     
-    def select_best_doctor_for_cluster(self, cluster_days, cluster_size):
+    def select_best_doctor_for_4cluster(self, cluster_days, cluster_size):
         """
         Select the best doctor to fill a given cluster.
         """
@@ -473,10 +473,158 @@ class Scheduler:
 
         # Find doctors who worked yesterday
         doctors_who_worked_yesterday = {
-            cal_day.shifts["s4"] for cal_day in self.calendar if cal_day.date == previous_date and cal_day.shifts["s4"]
+            shift for cal_day in self.calendar
+            if cal_day.date == previous_date
+            for shift in cal_day.shifts.values() if shift  # Include all shifts (s1, s2, s3, s4)
         }
 
         # Loop through all doctors and reset consecutive shifts if they didn't work yesterday
         for doctor in self.doctors:
             if doctor not in doctors_who_worked_yesterday:
                 doctor.consecutive_shifts = 0  # Reset if they didn’t work yesterday
+
+    def schedule_remaining_shifts(self, num_shifts):
+        """
+        Schedule remaining shifts for the month based on the number of shifts per day.
+
+        Args:
+            num_shifts (int): Number of shifts to schedule (3 or 4).
+        """
+        # Define which shifts to schedule (excluding s4)
+        shifts_to_schedule = ["s1", "s2"]
+        if num_shifts == 4:
+            shifts_to_schedule.append("s3")
+        
+        for cal_day in self.calendar:
+            self.reset_consecutive_shifts(cal_day.date)  # Reset before scheduling
+            for doctor in self.doctors:
+                print(f"{doctor.name:<15}{doctor.consecutive_shifts:<20}")
+
+            # Schedule all shifts for this day
+            for shift in shifts_to_schedule:
+                if not cal_day.is_shift_filled(shift):  # Only schedule if not already filled
+                    selected_doc = self.select_best_doctor_for_shift(cal_day, shift)
+                    if selected_doc:
+                        self.assign_shift(cal_day, selected_doc, shift)
+
+    def select_best_doctor_for_shift(self, cal_day, shift):
+        """
+        Select the best available doctor for a given shift on a given day.
+
+        Args:
+            cal_day (CalDay): The calendar day for which we are assigning a shift.
+            shift (str): The shift type ("s1", "s2", or "s3").
+
+        Returns:
+            Doctor or None: The best available doctor or None if no one is available.
+        """
+        best_doctor = None
+        
+        # Step 1: Filter out unavailable doctors
+        available_doctors = self.get_available_doctors(cal_day, shift)
+        doctor_names = sorted(
+            available_doctors,
+            key=lambda doc: (
+                doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
+                doc.total_shifts > doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
+                doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
+                doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
+            )
+        )
+        doctor_names = [doc.name for doc in doctor_names]
+                              
+        print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
+
+        if not available_doctors:
+            print(f"WARNING: No available doctors for {shift} on {cal_day.date.strftime('%b %d')}")
+            return None
+
+        # Step 2: Sort doctors based on priority
+        best_doctor = sorted(
+            available_doctors,
+            key=lambda doc: (
+                doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
+                doc.total_shifts > doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
+                doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
+                doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
+            )
+        )[0]
+
+        return best_doctor
+    
+    def get_available_doctors(self, cal_day, shift):
+        """
+        Get the list of doctors available for a given shift on a given day.
+
+        Args:
+            cal_day (CalDay): The calendar day for which we are determining availability.
+            shift (str): The shift type ("s1", "s2", or "s3").
+
+        Returns:
+            List[Doctor]: A list of available doctors.
+        """
+        available_doctors = []
+
+        for doc in self.doctors:
+            # Skip if the doctor has the day off
+            if cal_day.date in doc.days_off:
+                continue
+
+            # Skip if the doctor has no preference for this shift
+            shift_index = int(shift[1]) - 1  # Convert "s1" -> index 0, "s2" -> index 1, etc.
+            if doc.shift_prefs[shift_index] == 0:
+                continue
+
+            # Skip if doctor has already worked 5 consecutive shifts
+            if doc.consecutive_shifts >= 5:
+                continue
+
+            # Check if doctor is already scheduled for another shift that day
+            if any(scheduled_doc == doc for scheduled_doc in cal_day.shifts.values()):
+                continue
+
+            # Determine the date(s) we need to check for past shifts
+            prev_day = cal_day.date - timedelta(days=1)
+            two_days_ago = cal_day.date - timedelta(days=2)
+
+            # Look up the previous day's shift from the calendar if within the same month
+            prev_day_obj = next((d for d in self.calendar if d.date == prev_day), None)
+
+            # If the day is outside the calendar (first day of the month), check previous month shifts
+            prev_day_s2_or_s3 = False
+            if prev_day_obj:
+                prev_day_s2_or_s3 = prev_day_obj.shifts.get("s2") == doc or prev_day_obj.shifts.get("s3") == doc
+            else:
+                # If no prev_day_obj exists, check previous month's shift history
+                if (prev_day, "s2") in doc.previous_month_shifts or (prev_day, "s3") in doc.previous_month_shifts:
+                    prev_day_s2_or_s3 = True
+
+            # Skip doctor if they worked a later shift the previous day
+            if shift == "s1" and prev_day_s2_or_s3:
+                continue
+            if shift == "s2" and prev_day_obj and prev_day_obj.shifts.get("s3") == doc:
+                continue
+            if shift == "s2" and not prev_day_obj and (prev_day, "s3") in doc.previous_month_shifts:
+                continue
+
+            # Look up 4-shifts from the last 2 days (across both calendar and previous month)
+            last_2_days_s4 = False
+            for check_date in [prev_day, two_days_ago]:
+                past_day_obj = next((d for d in self.calendar if d.date == check_date), None)
+                if past_day_obj and past_day_obj.shifts.get("s4") == doc:
+                    last_2_days_s4 = True
+                    break
+                if (check_date, "s4") in doc.previous_month_shifts:
+                    last_2_days_s4 = True
+                    break
+
+            # Skip doctor if they worked a 4-shift in either of the last 2 days
+            if last_2_days_s4:
+                continue
+
+            # If none of the conditions exclude the doctor, add them to the list
+            available_doctors.append(doc)
+
+        return available_doctors

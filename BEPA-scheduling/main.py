@@ -31,23 +31,41 @@ def main():
     scheduler.schedule_pat()
     scheduler.schedule_remaining_shift4()
 
-    print_calendar(calendar)
     write_scheduled_shifts(filepath, calendar, month, year)
 
     # Load manually adjusted 4-shifts from Excel before scheduling
     inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
     read_manual_shift4_assignments(filepath, calendar, doctors, month, year,scheduler)
-    print_calendar(calendar)
-    debug_print_doctor_shifts(doctors)
+    #print_calendar(calendar)
+    #debug_print_doctor_shifts(doctors)
 
-    # Now proceed with scheduling remaining shifts
-    #scheduler = Scheduler(doctors, calendar)
+    # Ask user how many shifts they want to schedule per day
+    while True:
+        try:
+            num_shifts = int(input("How many shifts should be scheduled per day? (Enter 3 or 4): "))
+            if num_shifts in [3, 4]:
+                break
+            else:
+                os.system('cls||clear')
+                print("Honestly Geoff, how could you screw this up? Enter 3 or 4. It's not that hard.")
+                print()
+        except ValueError:
+            os.system('cls||clear')
+            print("Honestly Geoff, how could you screw this up? Enter 3 or 4. It's not that hard.")
+            print()
+
+    # Initialize scheduler and schedule shifts
+    scheduler = Scheduler(doctors, calendar)
+    scheduler.schedule_remaining_shifts(num_shifts)
+    print_calendar(calendar)
+
+    print()
+    print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")
+    print()
+    inp = input("Press enter to view the final schedule: ")
+    write_scheduled_shifts(filepath, calendar, month, year)
 
     # os.system('cls||clear')
-    # print()
-    # print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")
-    # print()
-    # inp = input("Press enter to view the final schedule: ")
     # cmd = "start EXCEL.EXE " + filepath
     # os.system(cmd)
 

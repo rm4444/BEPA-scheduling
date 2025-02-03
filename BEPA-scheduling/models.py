@@ -69,10 +69,14 @@ class Doctor:
         """
         # Determine if this shift follows a consecutive day and update consecutive shifts tracking
         previous_day = cal_day.date - timedelta(days=1)
-        if previous_day == self.last_shift_date:
-            self.consecutive_shifts += 1  # Continue streak
+
+        if isinstance(self.last_shift_date, CalDay):
+            if previous_day == self.last_shift_date.date:
+                self.consecutive_shifts += 1  # Continue streak
+            else:
+                self.consecutive_shifts = 1  # Start a new streak
         else:
-            self.consecutive_shifts = 1  # Start a new streak
+            self.consecutive_shifts = 1
 
         # Assign shift and update counts
         self.total_shifts += 1
@@ -80,7 +84,6 @@ class Doctor:
             self.night_shifts += 1
         if cal_day.weekend:
             self.weekend_shifts += 1
-        self.consecutive_shifts += 1
         self.last_shift_date = cal_day
 
 

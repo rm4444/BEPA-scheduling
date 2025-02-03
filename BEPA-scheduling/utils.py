@@ -350,7 +350,7 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
             cal_day = next((day for day in calendar if day.date == shift_date), None)
 
             # Debugging: Print column/row mapping
-            print(f"DEBUG: Processing {shift_date.strftime('%b %d')} | Row: {week_base_row + 4}, Column: {column} | CalDay: {cal_day}")
+            #print(f"DEBUG: Processing {shift_date.strftime('%b %d')} | Row: {week_base_row + 4}, Column: {column} | CalDay: {cal_day}")
 
             # Ensure the date is within the current month
             if shift_date.month != schedule_month:
@@ -378,11 +378,10 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
                 print(f"WARNING: No matching doctor found for {shift_date.strftime('%b %d')}!")
 
     workbook.close()
-    print("\nManual 4-shift assignments successfully read and applied.\n")
 
     # Debug: Print final state of shift 4 assignments
-    for cal_day in calendar:
-        print(f"DEBUG CHECK: {cal_day.date.strftime('%b %d')} Shift 4: {cal_day.shifts['s4'].name if cal_day.shifts['s4'] else 'None'}")
+    #for cal_day in calendar:
+        #print(f"DEBUG CHECK: {cal_day.date.strftime('%b %d')} Shift 4: {cal_day.shifts['s4'].name if cal_day.shifts['s4'] else 'None'}")
 
 def open_excel_file(filepath):
     """
