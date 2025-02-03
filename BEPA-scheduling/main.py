@@ -38,6 +38,7 @@ def main():
     inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
     read_manual_shift4_assignments(filepath, calendar, doctors, month, year,scheduler)
     print_calendar(calendar)
+    debug_print_doctor_shifts(doctors)
 
     # Now proceed with scheduling remaining shifts
     #scheduler = Scheduler(doctors, calendar)

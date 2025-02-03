@@ -320,12 +320,17 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
     }
     start_column = weekday_to_column[first_day_of_month.weekday()]
 
+    # Reset shift counters before processing updated assignments
+    for doc in doctors:
+        doc.total_shifts = 0
+        doc.night_shifts = 0
+        doc.weekend_shifts = 0
+        doc.consecutive_shifts = 0
+        doc.last_shift_date = datetime.min.date()
+
     # Clear any previous Shift 4 assignments before applying new ones
     for cal_day in calendar:
         cal_day.shifts["s4"] = None  # Reset previous assignments
-
-    # Debug print: Track row/column assignments
-    print("\n--- Reading Manual Shift 4 Assignments ---")
 
     # Iterate over each week
     for week_index, week_base_row in enumerate(date_rows):
@@ -355,6 +360,9 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
             if not cal_day:
                 print(f"WARNING: No matching calendar day found for {shift_date}. Skipping.")
                 continue
+            
+            # **Reset consecutive shifts at the start of each new day**
+            scheduler.reset_consecutive_shifts(shift_date)
 
             # Determine the row where Shift 4 assignments are stored
             shift4_row = week_base_row + 4  # Shift 4 is always row 4 below the date row
@@ -384,3 +392,20 @@ def open_excel_file(filepath):
         filepath (str): The full path to the Excel file.
     """
     subprocess.run(["open", filepath])
+
+def debug_print_doctor_shifts(doctors):
+    """
+    Print out the total shifts, night shifts, weekend shifts, and consecutive shifts for each doctor
+    in a readable format.
+    
+    Args:
+        doctors (list): List of Doctor objects.
+    """
+    print("\n=== DEBUG: Doctor Shift Summary ===")
+    print(f"{'Doctor':<10} | {'Total Shifts':<12} | {'Night Shifts':<12} | {'Weekend Shifts':<15} | {'Consecutive Days'}")
+    print("-" * 70)
+
+    for doctor in doctors:
+        print(f"{doctor.name:<10} | {doctor.total_shifts:<12} | {doctor.night_shifts:<12} | {doctor.weekend_shifts:<15} | {doctor.consecutive_shifts}")
+
+    print("=" * 70 + "\n")

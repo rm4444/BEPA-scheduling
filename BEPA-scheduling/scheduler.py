@@ -288,6 +288,8 @@ class Scheduler:
                         print(f"Error: gap_start {gap_start} not found in the calendar.")
                         break
 
+                    self.reset_consecutive_shifts(gap_start)
+
                     # Try to find a doctor for the cluster
                     selected_doc = self.select_best_doctor_for_cluster(cluster_days, cluster_size)
 
@@ -350,13 +352,16 @@ class Scheduler:
         best_doctor = None
         available_doctors = self.get_available_doctors_for_shift4_cluster(cluster_days, cluster_size)
         #print(f"Available doctors: {[doc.name for doc in available_doctors]}")
-
+        
         best_doctor = sorted(
             available_doctors,
             key=lambda doc: (
                 -doc.shift_prefs[3],  # Higher shift preference for s4 is better
                 doc == self.last_doctor_shift4,  # De-prioritize the last doctor to work s4 (True sorts after False)
-                doc.total_shifts  # Least shifts scheduled
+                doc.last_shift_date.date if isinstance(doc.last_shift_date, CalDay) 
+                else (doc.last_shift_date if isinstance(doc.last_shift_date, date) else date.min),  # Extract actual date
+                doc.night_shifts, # Fewest night shifts scheduled
+                doc.total_shifts  # Fewest shifts scheduled
             ),
         )[0]
 
@@ -456,3 +461,22 @@ class Scheduler:
             print(f"DEBUG: Successfully assigned {doctor.name} to {shift_type} on {cal_day.date.strftime('%b %d')}")
             return True
         return False
+    
+    def reset_consecutive_shifts(self, current_date):
+        """
+        Resets consecutive shift counts for doctors who were not scheduled the previous day.
+
+        Args:
+            current_date (datetime.date): The date for which scheduling is happening.
+        """
+        previous_date = current_date - timedelta(days=1)
+
+        # Find doctors who worked yesterday
+        doctors_who_worked_yesterday = {
+            cal_day.shifts["s4"] for cal_day in self.calendar if cal_day.date == previous_date and cal_day.shifts["s4"]
+        }
+
+        # Loop through all doctors and reset consecutive shifts if they didn't work yesterday
+        for doctor in self.doctors:
+            if doctor not in doctors_who_worked_yesterday:
+                doctor.consecutive_shifts = 0  # Reset if they didn’t work yesterday

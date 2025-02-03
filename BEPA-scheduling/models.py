@@ -26,6 +26,7 @@ class Doctor:
         self.night_shifts = 0
         self.weekend_shifts = 0
         self.consecutive_shifts = 0
+        self.last_shift_date = datetime.min.date()
         self.previous_month_shifts = []
 
         # Initialize consecutive shifts based on the last month
@@ -58,21 +59,29 @@ class Doctor:
             return False
         return True
 
-    def assign_shift(self, date, shift_type, is_weekend=False):
+    def assign_shift(self, cal_day, shift_type):
         """
-        Assign the doctor to a shift and update their statistics.
+        Assigns a shift to the doctor and updates shift tracking.
 
         Args:
-            date (int): The current date.
-            shift_type (int): The shift type (1, 2, 3, or 4).
-            is_weekend (bool): Whether the shift is on a weekend.
+            cal_day (CalendarDay): The day the shift is assigned.
+            shift_type (str): The type of shift being assigned.
         """
+        # Determine if this shift follows a consecutive day and update consecutive shifts tracking
+        previous_day = cal_day.date - timedelta(days=1)
+        if previous_day == self.last_shift_date:
+            self.consecutive_shifts += 1  # Continue streak
+        else:
+            self.consecutive_shifts = 1  # Start a new streak
+
+        # Assign shift and update counts
         self.total_shifts += 1
-        if shift_type == 4:
+        if shift_type == "s4":
             self.night_shifts += 1
-        if is_weekend:
+        if cal_day.weekend:
             self.weekend_shifts += 1
         self.consecutive_shifts += 1
+        self.last_shift_date = cal_day
 
 
 class CalDay:
