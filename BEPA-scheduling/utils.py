@@ -5,6 +5,7 @@ from columnar import columnar
 import calendar
 from calendar import monthrange
 import subprocess
+import xlwings as xw
 
 def print_calendar(calendar):
     """
@@ -134,8 +135,10 @@ def load_shifts_requested_off(filepath, doctors, schedule_month, schedule_year):
         schedule_month (int): The month of the schedule (1-12).
         schedule_year (int): The year of the schedule.
     """
-    workbook = openpyxl.load_workbook(filepath, data_only=True)
-    worksheet = pd.DataFrame(workbook["Scheduling Worksheet"].values)
+    wb = xw.Book(filepath)
+    sheet = wb.sheets["Scheduling Worksheet"]
+    df = sheet.used_range.value  # Read with live calculation
+    worksheet = pd.DataFrame(df)
 
     # Calculate the number of days in the given month
     num_days = calendar.monthrange(schedule_year, schedule_month)[1]
@@ -166,8 +169,10 @@ def load_shifts_requested_off(filepath, doctors, schedule_month, schedule_year):
 def load_previous_month_shifts(filepath, doctors, schedule_month, schedule_year):
     last_4_days = get_last_days_of_previous_month(schedule_month, schedule_year)
 
-    workbook = openpyxl.load_workbook(filepath, data_only=True)  # Use data_only=True to resolve formulas
-    worksheet = workbook["Scheduling Worksheet"]
+    wb = xw.Book(filepath)
+    sheet = wb.sheets["Scheduling Worksheet"]
+    df = sheet.used_range.value  # Read with live calculation
+    worksheet = pd.DataFrame(df)
 
     # Extract values and filter out invalid rows
     rows = list(worksheet.values)
@@ -177,7 +182,7 @@ def load_previous_month_shifts(filepath, doctors, schedule_month, schedule_year)
         # Find the row for the doctor
         doctor_row = next((row for row in data_rows if row[0].strip() == doctor.name), None)
 
-        if not doctor_row:
+        if doctor_row is None or len(doctor_row) == 0:
             #print(f"WARNING: No match found for Doctor {doctor.name} in the worksheet.")
             continue
 
@@ -186,7 +191,10 @@ def load_previous_month_shifts(filepath, doctors, schedule_month, schedule_year)
             shift_type = doctor_row[col_idx] if len(doctor_row) > col_idx else None
 
             # Ensure shift_type is an integer if valid, otherwise None
-            shift_type = int(shift_type) if shift_type and isinstance(shift_type, (int, float)) else None
+            if pd.isna(shift_type) or shift_type is None:
+                shift_type = None
+            else:
+                shift_type = int(shift_type) if isinstance(shift_type, (int, float)) else None
 
             if shift_type is not None:
                 previous_month_shifts.append((day, shift_type))
@@ -325,7 +333,6 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
         doc.total_shifts = 0
         doc.night_shifts = 0
         doc.weekend_shifts = 0
-        doc.consecutive_shifts = 0
         doc.last_shift_date = datetime.min.date()
 
     # Clear any previous Shift 4 assignments before applying new ones
@@ -376,8 +383,6 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
                 scheduler.assign_shift(cal_day, assigned_doctor, "s4")
             else:
                 print(f"WARNING: No matching doctor found for {shift_date.strftime('%b %d')}!")
-
-    workbook.close()
 
     # Debug: Print final state of shift 4 assignments
     #for cal_day in calendar:

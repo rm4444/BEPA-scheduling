@@ -23,11 +23,12 @@ def main():
     doctors = load_doctor_inputs(filepath) #load in doctor inputs (Name, Doc Type, Min / Max Shifts, Shift Prefs, Flip Shifts)
     load_shifts_requested_off(filepath, doctors, month, year)
     load_previous_month_shifts(filepath, doctors, month, year)
-    #print_doctor_info(doctors)
+    print_doctor_info(doctors)
 
     num_days = monthrange(year, month)[1]
     calendar = [CalDay(date(year, month, day)) for day in range(1, num_days+1)]
     scheduler = Scheduler(doctors, calendar)
+    scheduler.initialize_consecutive_shifts_from_previous_month()
     scheduler.schedule_pat()
     scheduler.schedule_remaining_shift4()
 
@@ -56,6 +57,7 @@ def main():
 
     # Initialize scheduler and schedule shifts
     scheduler = Scheduler(doctors, calendar)
+    scheduler.initialize_consecutive_shifts_from_previous_month()
     scheduler.schedule_remaining_shifts(num_shifts)
     print_calendar(calendar)
 

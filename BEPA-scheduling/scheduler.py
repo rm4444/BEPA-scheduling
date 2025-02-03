@@ -458,7 +458,7 @@ class Scheduler:
         """
         if cal_day.assign_shift(shift_type, doctor):  # Assign to the calendar first
             doctor.assign_shift(cal_day, shift_type)  # Assign to the doctor's record
-            print(f"DEBUG: Successfully assigned {doctor.name} to {shift_type} on {cal_day.date.strftime('%b %d')}")
+            #print(f"DEBUG: Successfully assigned {doctor.name} to {shift_type} on {cal_day.date.strftime('%b %d')}")
             return True
         return False
     
@@ -491,9 +491,9 @@ class Scheduler:
             num_shifts (int): Number of shifts to schedule (3 or 4).
         """
         # Define which shifts to schedule (excluding s4)
-        shifts_to_schedule = ["s1", "s2"]
+        shifts_to_schedule = ["s1", "s3"]
         if num_shifts == 4:
-            shifts_to_schedule.append("s3")
+            shifts_to_schedule = ["s1", "s2", "s3"]
         
         for cal_day in self.calendar:
             self.reset_consecutive_shifts(cal_day.date)  # Reset before scheduling
@@ -526,7 +526,7 @@ class Scheduler:
             available_doctors,
             key=lambda doc: (
                 doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
-                doc.total_shifts > doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                doc.total_shifts >= doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
                 -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
                 doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
                 doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
@@ -545,7 +545,7 @@ class Scheduler:
             available_doctors,
             key=lambda doc: (
                 doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
-                doc.total_shifts > doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                doc.total_shifts >= doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
                 -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
                 doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
                 doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
@@ -628,3 +628,36 @@ class Scheduler:
             available_doctors.append(doc)
 
         return available_doctors
+    
+    def initialize_consecutive_shifts_from_previous_month(self):
+        """
+        Initializes consecutive shift counts for each doctor based on their shifts at the end of the previous month.
+
+        This function analyzes a doctor's previous month's shifts and determines how many consecutive days 
+        they worked leading into the first day of the new month.
+        """
+        for doctor in self.doctors:
+            consecutive_days = 0
+
+            # Sort shifts by date to process them in order
+            sorted_shifts = sorted(doctor.previous_month_shifts, key=lambda x: x[0])
+
+            for i in range(len(sorted_shifts) - 1, -1, -1):  # Iterate backwards from last shift
+                shift_date, shift_type = sorted_shifts[i]
+
+                if i == len(sorted_shifts) - 1:
+                    # If the last shift is not on the last day of the month, break
+                    if (self.calendar[0].date - shift_date).days > 1:
+                        break
+
+                # If the shift was the day before the first day of the new month, start counting
+                if (self.calendar[0].date - shift_date).days == 1 + consecutive_days:
+                    consecutive_days += 1
+                else:
+                    break  # Stop if there's a gap
+
+            # Set the initial consecutive shift count for the doctor
+            doctor.consecutive_shifts = consecutive_days
+
+        # for doctor in self.doctors:
+        #     print(f"Doctor: {doctor.name}, Consecutive Shifts: {doctor.consecutive_shifts}")
