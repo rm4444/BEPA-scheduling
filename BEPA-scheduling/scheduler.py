@@ -288,8 +288,6 @@ class Scheduler:
                         print(f"Error: gap_start {gap_start} not found in the calendar.")
                         break
 
-                    self.reset_consecutive_shifts(gap_start)
-
                     # Try to find a doctor for the cluster
                     selected_doc = self.select_best_doctor_for_4cluster(cluster_days, cluster_size)
 
@@ -461,27 +459,6 @@ class Scheduler:
             #print(f"DEBUG: Successfully assigned {doctor.name} to {shift_type} on {cal_day.date.strftime('%b %d')}")
             return True
         return False
-    
-    def reset_consecutive_shifts(self, current_date):
-        """
-        Resets consecutive shift counts for doctors who were not scheduled the previous day.
-
-        Args:
-            current_date (datetime.date): The date for which scheduling is happening.
-        """
-        previous_date = current_date - timedelta(days=1)
-
-        # Find doctors who worked yesterday
-        doctors_who_worked_yesterday = {
-            shift for cal_day in self.calendar
-            if cal_day.date == previous_date
-            for shift in cal_day.shifts.values() if shift  # Include all shifts (s1, s2, s3, s4)
-        }
-
-        # Loop through all doctors and reset consecutive shifts if they didn't work yesterday
-        for doctor in self.doctors:
-            if doctor not in doctors_who_worked_yesterday:
-                doctor.consecutive_shifts = 0  # Reset if they didn’t work yesterday
 
     def schedule_remaining_shifts(self, num_shifts):
         """
@@ -496,16 +473,14 @@ class Scheduler:
             shifts_to_schedule = ["s1", "s2", "s3"]
         
         for cal_day in self.calendar:
-            self.reset_consecutive_shifts(cal_day.date)  # Reset before scheduling
-            for doctor in self.doctors:
-                print(f"{doctor.name:<15}{doctor.consecutive_shifts:<20}")
-
             # Schedule all shifts for this day
             for shift in shifts_to_schedule:
                 if not cal_day.is_shift_filled(shift):  # Only schedule if not already filled
                     selected_doc = self.select_best_doctor_for_shift(cal_day, shift)
                     if selected_doc:
                         self.assign_shift(cal_day, selected_doc, shift)
+
+            self.update_consecutive_shifts(cal_day.date)  # Update consecutive_shifts
 
     def select_best_doctor_for_shift(self, cal_day, shift):
         """
@@ -661,3 +636,28 @@ class Scheduler:
 
         # for doctor in self.doctors:
         #     print(f"Doctor: {doctor.name}, Consecutive Shifts: {doctor.consecutive_shifts}")
+
+    def update_consecutive_shifts(self, current_date):
+        """
+        Updates consecutive shift counts for all doctors based on whether they worked on the given date.
+
+        Args:
+            current_date (datetime.date): The date for which scheduling has been completed.
+        """
+        doctors_who_worked_today = set()
+
+        # Identify doctors scheduled on the given date
+        for cal_day in self.calendar:
+            if cal_day.date == current_date:
+                for shift in cal_day.shifts.values():
+                    if shift:  # If a doctor was assigned to any shift
+                        doctors_who_worked_today.add(shift)  # Add doctor object
+
+        # Increment consecutive shifts for doctors who worked today
+        for doctor in doctors_who_worked_today:
+            doctor.consecutive_shifts += 1
+
+        # Reset consecutive shifts for doctors who did NOT work today
+        for doctor in self.doctors:
+            if doctor not in doctors_who_worked_today:
+                doctor.consecutive_shifts = 0

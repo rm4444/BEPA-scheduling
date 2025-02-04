@@ -367,9 +367,6 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
             if not cal_day:
                 print(f"WARNING: No matching calendar day found for {shift_date}. Skipping.")
                 continue
-            
-            # **Reset consecutive shifts at the start of each new day**
-            scheduler.reset_consecutive_shifts(shift_date)
 
             # Determine the row where Shift 4 assignments are stored
             shift4_row = week_base_row + 4  # Shift 4 is always row 4 below the date row

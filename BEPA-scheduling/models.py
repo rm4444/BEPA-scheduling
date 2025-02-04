@@ -67,16 +67,6 @@ class Doctor:
             cal_day (CalendarDay): The day the shift is assigned.
             shift_type (str): The type of shift being assigned.
         """
-        # Determine if this shift follows a consecutive day and update consecutive shifts tracking
-        previous_day = cal_day.date - timedelta(days=1)
-
-        if isinstance(self.last_shift_date, CalDay):
-            if previous_day == self.last_shift_date.date:
-                self.consecutive_shifts += 1  # Continue streak
-            else:
-                self.consecutive_shifts = 1  # Start a new streak
-        else:
-            self.consecutive_shifts = 1
 
         # Assign shift and update counts
         self.total_shifts += 1

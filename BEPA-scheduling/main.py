@@ -37,7 +37,7 @@ def main():
     # Load manually adjusted 4-shifts from Excel before scheduling
     inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
     read_manual_shift4_assignments(filepath, calendar, doctors, month, year,scheduler)
-    #print_calendar(calendar)
+    print_calendar(calendar)
     #debug_print_doctor_shifts(doctors)
 
     # Ask user how many shifts they want to schedule per day
