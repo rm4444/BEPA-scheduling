@@ -293,7 +293,6 @@ def write_scheduled_shifts(filepath, calendar, schedule_month, schedule_year):
 
     # Save the workbook
     workbook.save(filepath)
-    print(f"Scheduled shifts successfully written to {filepath}")
     open_excel_file(filepath)
 
 def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, schedule_year, scheduler):
@@ -410,3 +409,26 @@ def debug_print_doctor_shifts(doctors):
         print(f"{doctor.name:<10} | {doctor.total_shifts:<12} | {doctor.night_shifts:<12} | {doctor.weekend_shifts:<15} | {doctor.consecutive_shifts}")
 
     print("=" * 70 + "\n")
+
+def clear_scheduled_shifts(filepath):
+    """
+    Clears all scheduled shifts (S1, S2, S3) from the Excel output file while keeping S4 intact.
+
+    Args:
+        filepath (str): Path to the Excel file.
+    """
+    wb = xw.Book(filepath)
+    sheet = wb.sheets["Color"]  # Adjust sheet name if needed
+
+    # Define the shift row groups: S1, S2, S3 are in these row sets, shifting down every 7 rows
+    shift_row_groups = [(5, 6, 7), (12, 13, 14), (19, 20, 21), (26, 27, 28), (33, 34, 35), (40, 41, 42)]
+
+    # Shift columns: B to H (Excel column 2 to 8)
+    start_col, end_col = 2, 8
+
+    # Loop through all shift row groups and clear the cells
+    for s1, s2, s3 in shift_row_groups:
+        for row in [s1, s2, s3]:  # Clear only S1, S2, S3
+            sheet.range((row, start_col), (row, end_col)).value = None
+
+    wb.save(filepath)
