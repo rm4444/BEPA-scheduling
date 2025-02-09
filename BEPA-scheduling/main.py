@@ -7,14 +7,16 @@ import os
 
 def main():
 
-    # inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
-    # while inp1.lower().strip() != "yes":
-    #     print()
-    #     print("You absolute nincompoop. Can't you follow one simple instruction? Let's try again.")
-    #     inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
-    # print()
-    # inp1 = input("Glad you agree. Now that that's settled, let's get to scheduling. Press enter to continue: ")
-    # os.system('cls||clear')
+    os.system('cls||clear')
+    inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
+    while inp1.lower().strip() != "yes":
+        print()
+        print("You absolute nincompoop. Can't you follow one simple instruction? Let's try again.")
+        inp1 = input("Tu eres garbajo que muerte para dinero. Type 'yes' to agree with this statement: ")
+    print()
+    inp1 = input("Glad you agree. Now that that's settled, let's get to scheduling. Press enter to continue: ")
+    os.system('cls||clear')
+    print("Loading inputs...")
 
     filepath = sys.argv[1] #path to Excel file
     month, year = load_month_and_year(filepath) #load in month and year as ints
@@ -28,16 +30,23 @@ def main():
     calendar = [CalDay(date(year, month, day)) for day in range(1, num_days+1)]
     scheduler = Scheduler(doctors, calendar)
     scheduler.initialize_consecutive_shifts_from_previous_month()
-    scheduler.schedule_pat()
-    scheduler.schedule_remaining_shift4()
-
-    write_scheduled_shifts(filepath, calendar, month, year)
     clear_scheduled_shifts(filepath)
 
-    # Load manually adjusted 4-shifts from Excel before scheduling
-    inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
+    os.system('cls||clear')
+    inp = input("Type 'Y' to make a new schedule from scratch, and type 'N' to only schedule the day shifts: ").strip().upper()
+    while inp != "Y" and inp != "N":
+        inp = input("Geoff, you ignorant slut. Type 'Y' to make a new schedule from scratch, and type 'N' to only schedule the day shifts: ").strip().upper()
+
+    if inp == "Y":
+        scheduler.schedule_pat()
+        scheduler.schedule_remaining_shift4()
+        write_scheduled_shifts(filepath, calendar, month, year)
+        # Load manually adjusted 4-shifts from Excel before scheduling
+        inp = input("When you're done setting the night shifts, save and close out of the Excel document. Press enter when you are ready to continue, you abominable nincompoop: ")
+    
+    os.system('cls||clear')
     read_manual_shift4_assignments(filepath, calendar, doctors, month, year,scheduler)
-    print_calendar(calendar)
+    #print_calendar(calendar)
     #debug_print_doctor_shifts(doctors)
 
     # Ask user how many shifts they want to schedule per day
@@ -56,20 +65,17 @@ def main():
             print()
 
     # Initialize scheduler and schedule shifts
+    os.system('cls||clear')
     scheduler = Scheduler(doctors, calendar)
     scheduler.initialize_consecutive_shifts_from_previous_month()
     scheduler.schedule_remaining_shifts(num_shifts)
-    print_calendar(calendar)
+   #print_calendar(calendar)
 
-    print()
+    os.system('cls||clear')
     print("All done, ya filthy animal. Be glad you have a son who is as brilliant as I am. And don't forget: tu eres garbajo que muerte para dinero.")
     print()
     inp = input("Press enter to view the final schedule: ")
     write_scheduled_shifts(filepath, calendar, month, year)
-
-    # os.system('cls||clear')
-    # cmd = "start EXCEL.EXE " + filepath
-    # os.system(cmd)
 
 if __name__ == "__main__":
     main()

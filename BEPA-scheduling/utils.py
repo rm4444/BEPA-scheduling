@@ -432,3 +432,4 @@ def clear_scheduled_shifts(filepath):
             sheet.range((row, start_col), (row, end_col)).value = None
 
     wb.save(filepath)
+    wb.close()

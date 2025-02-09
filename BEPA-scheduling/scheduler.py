@@ -509,7 +509,7 @@ class Scheduler:
         )
         doctor_names = [doc.name for doc in doctor_names]
                               
-        print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
+        #print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
 
         if not available_doctors:
             print(f"WARNING: No available doctors for {shift} on {cal_day.date.strftime('%b %d')}")
