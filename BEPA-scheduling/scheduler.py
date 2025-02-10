@@ -497,16 +497,26 @@ class Scheduler:
         
         # Step 1: Filter out unavailable doctors
         available_doctors = self.get_available_doctors(cal_day, shift)
+
+        # to debug sorting, print out sortable attributes
+        # for doc in available_doctors:
+        #     print(f"Doctor: {doc.name}, Consecutive: {doc.consecutive_shifts}, "
+        #         f"Total Shifts: {doc.total_shifts}, Max Shifts: {doc.max_shifts}, "
+        #         f"Shift Pref: {doc.shift_prefs[int(shift[1]) - 1]}, "
+        #         f"Flip Shifts: {doc.flip_shifts}, "
+        #         f"Shift Ratio: {doc.total_shifts / doc.max_shifts:.2f}")
+            
         doctor_names = sorted(
             available_doctors,
             key=lambda doc: (
                 doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
-                doc.total_shifts >= doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                doc.total_shifts >= doc.max_shifts, # De-prioritize docs that have been scheduled for their max shifts
                 -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
                 doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
                 doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
             )
         )
+
         doctor_names = [doc.name for doc in doctor_names]
                               
         #print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
@@ -520,7 +530,7 @@ class Scheduler:
             available_doctors,
             key=lambda doc: (
                 doc.consecutive_shifts >= 4, # De-prioritize docs with consecutive shifts >= 4
-                doc.total_shifts >= doc.max_shifts # De-prioritize docs that have been scheduled for their max shifts
+                doc.total_shifts >= doc.max_shifts, # De-prioritize docs that have been scheduled for their max shifts
                 -doc.shift_prefs[int(shift[1]) - 1],  # Higher preference for this shift is better
                 doc.flip_shifts != "Yes", # Higher preference for doctors with Flip Shifts Requested (i.e., part-time docs)
                 doc.total_shifts / doc.max_shifts,  # Prefer doctors who are farther from their max shift allocation
