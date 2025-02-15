@@ -612,6 +612,30 @@ class Scheduler:
             # If none of the conditions exclude the doctor, add them to the list
             available_doctors.append(doc)
 
+         # Step 1: Identify doctors scheduled the following day
+        future_day = cal_day.date + timedelta(days=1)
+        future_day_cal = next((d for d in self.calendar if d.date == future_day), None)
+        
+        # Step 2: Track consecutive days in the future
+        future_consecutive_days = {}
+
+        if future_day_cal:
+            for doctor in available_doctors:
+                count = 0
+                next_day = future_day_cal
+
+                while next_day and any(shift_doc == doctor for shift_doc in next_day.shifts.values()):
+                    count += 1
+                    next_day = next((d for d in self.calendar if d.date == next_day.date + timedelta(days=1)), None)
+
+                future_consecutive_days[doctor] = count
+
+        # Step 3: Remove doctors who would exceed 5 consecutive shifts
+        available_doctors = [
+            doctor for doctor in available_doctors
+            if doctor.consecutive_shifts + 1 + future_consecutive_days.get(doctor, 0) <= 5
+        ]
+
         return available_doctors
     
     def initialize_consecutive_shifts_from_previous_month(self):
