@@ -440,7 +440,37 @@ class Scheduler:
         Returns:
             list of Doctor: Doctors who are eligible for the given cluster.
         """
-        return [doctor for doctor in self.doctors if self.is_doctor_eligible_for_cluster(doctor, cluster_days, cluster_size)]
+        available_doctors = [doctor for doctor in self.doctors if self.is_doctor_eligible_for_cluster(doctor, cluster_days, cluster_size)]
+        #print(f"DEBUG: Available doctors for cluster on {cluster_days[0].date.strftime('%b %d')} - {cluster_days[-1].date.strftime('%b %d')}: {[doc.name for doc in available_doctors]}")
+        
+        # Prevent scheduling more than 5 consecutive shifts
+        filtered_doctors = []
+        
+        for doctor in available_doctors:
+            # Count how many consecutive s4 shifts the doctor already has
+            consecutive_s4_count = 0
+            
+            current_date = cluster_days[0].date - timedelta(days=1)  # Start from the previous day
+
+            # Iterate backwards through the calendar
+            while current_date >= self.calendar[0].date:
+                cal_day = next((day for day in self.calendar if day.date == current_date), None)
+
+                if not cal_day or cal_day.shifts.get("s4") != doctor:
+                    break  # Stop if no s4 shift or a different doctor was scheduled
+
+                consecutive_s4_count += 1
+                current_date -= timedelta(days=1)
+
+            # If adding this cluster would push them over 5 consecutive shifts, exclude them
+            if consecutive_s4_count + cluster_size <= 5:
+                filtered_doctors.append(doctor)
+
+        if not filtered_doctors:
+            #print(f"WARNING: No available doctors for s4 cluster {cluster_days[0].date.strftime('%b %d')} - {cluster_days[-1].date.strftime('%b %d')}")
+            return available_doctors  # Fallback: Return all doctors to avoid crashing
+        
+        return filtered_doctors  # Updated return statement to use filtered list
     
     def assign_shift(self, cal_day, doctor, shift_type):
         """
@@ -612,7 +642,7 @@ class Scheduler:
             # If none of the conditions exclude the doctor, add them to the list
             available_doctors.append(doc)
 
-         # Step 1: Identify doctors scheduled the following day
+        # Step 1: Identify doctors scheduled the following day
         future_day = cal_day.date + timedelta(days=1)
         future_day_cal = next((d for d in self.calendar if d.date == future_day), None)
         
