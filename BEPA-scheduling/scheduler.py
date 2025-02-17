@@ -272,6 +272,7 @@ class Scheduler:
         # Proceed with normal scheduling for the remaining gaps
         for gap in pat_cluster_gaps:
             gap_start, gap_size = gap
+            failed_attempts = 0
 
             while gap_size > 0:
                 cluster_sizes = self.determine_cluster_plan(gap_size)
@@ -292,13 +293,20 @@ class Scheduler:
                     selected_doc = self.select_best_doctor_for_4cluster(cluster_days, cluster_size)
 
                     if selected_doc is None:
-                        print(f"Could not schedule a cluster of size {cluster_size} starting on {gap_start}.")
-                        continue
+                        print(f"WARNING: No available doctor for a cluster of size {cluster_size} starting on {gap_start}.")
+                        failed_attempts += 1  # Increment failure count
+                        if failed_attempts > 5:  # Prevent infinite loops
+                            print(f"ERROR: Unable to schedule shift-4 for gap {gap_start} - skipping.")
+                            gap_size = 0  # Break out of loop
+                        else:
+                            gap_start += timedelta(days=1)  # Move forward and retry
+                            gap_size -= 1  # Reduce the remaining gap
+                        continue  # Try the next cluster size
 
                     # Assign the doctor to all days in the cluster
                     for cal_day in cluster_days:
                         if cal_day.is_shift_filled("s4"):
-                            continue
+                            break
 
                         self.assign_shift(cal_day, selected_doc, "s4")
                         self.last_doctor_shift4 = selected_doc
@@ -351,6 +359,9 @@ class Scheduler:
         available_doctors = self.get_available_doctors_for_shift4_cluster(cluster_days, cluster_size)
         #print(f"Available doctors: {[doc.name for doc in available_doctors]}")
         
+        if not available_doctors:
+            return best_doctor
+        
         best_doctor = sorted(
             available_doctors,
             key=lambda doc: (
@@ -362,7 +373,7 @@ class Scheduler:
                 doc.total_shifts  # Fewest shifts scheduled
             ),
         )[0]
-
+        
         return best_doctor
 
     def determine_cluster_plan(self, gap_size):
