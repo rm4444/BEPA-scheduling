@@ -512,6 +512,9 @@ class Scheduler:
         shifts_to_schedule = ["s1", "s3"]
         if num_shifts == 4:
             shifts_to_schedule = ["s1", "s2", "s3"]
+        if num_shifts == 3:
+            for doc in self.doctors:
+                doc.shift_prefs[2] = doc.shift_prefs[1]
         
         for cal_day in self.calendar:
             # Schedule all shifts for this day
@@ -560,7 +563,8 @@ class Scheduler:
 
         doctor_names = [doc.name for doc in doctor_names]
                               
-        #print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
+        # print(f"DEBUG: Date: {cal_day.date.strftime('%b %d')}, Shift: {shift}, Available Doctors: {', '.join(doctor_names) if doctor_names else 'None'}")
+        # print()
 
         if not available_doctors:
             print(f"WARNING: No available doctors for {shift} on {cal_day.date.strftime('%b %d')}")
