@@ -514,7 +514,7 @@ class Scheduler:
             shifts_to_schedule = ["s1", "s2", "s3"]
         if num_shifts == 3:
             for doc in self.doctors:
-                doc.shift_prefs[2] = doc.shift_prefs[1]
+                doc.shift_prefs[2] = min(doc.shift_prefs[1], 3) # cap at 3 to avoid overscheduling docs like HRA
         
         for cal_day in self.calendar:
             # Schedule all shifts for this day
