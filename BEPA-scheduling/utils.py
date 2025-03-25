@@ -5,6 +5,8 @@ from columnar import columnar
 import calendar
 from calendar import monthrange
 import subprocess
+import platform
+import os
 import xlwings as xw
 
 def print_calendar(calendar):
@@ -386,12 +388,24 @@ def read_manual_shift4_assignments(filepath, calendar, doctors, schedule_month, 
 
 def open_excel_file(filepath):
     """
-    Opens the specified Excel file using the default application.
+    Opens the specified Excel file using the default application, depending on OS.
     
     Args:
         filepath (str): The full path to the Excel file.
     """
-    subprocess.run(["open", filepath])
+    system = platform.system()
+
+    try:
+        if system == "Darwin":  # macOS
+            subprocess.run(["open", filepath])
+        elif system == "Windows":
+            os.startfile(filepath)
+        elif system == "Linux":
+            subprocess.run(["xdg-open", filepath])
+        else:
+            print(f"Unsupported OS: {system}. Cannot open Excel file.")
+    except Exception as e:
+        print(f"Error opening file: {e}")
 
 def debug_print_doctor_shifts(doctors):
     """
